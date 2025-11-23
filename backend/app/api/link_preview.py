@@ -15,6 +15,9 @@ from backend.app.models.link_preview import (
     LinkPreviewResponse,
     LinkMetadata,
 )
+from backend.app.services.metadata_fetcher import MetadataFetcher, FetchError
+from backend.app.services.html_parser import HTMLParser
+from backend.app.services.metadata_cache import MetadataCache
 
 
 # Configure logging
@@ -22,6 +25,11 @@ logger = logging.getLogger(__name__)
 
 # Create router
 router = APIRouter(prefix="/api", tags=["link-preview"])
+
+# Initialize services (singleton instances)
+_metadata_fetcher = MetadataFetcher(timeout=5, max_size=5_000_000)
+_html_parser = HTMLParser()
+_metadata_cache = MetadataCache(ttl=3600, max_size=1000)
 
 
 def _extract_domain(url: str) -> str:
@@ -61,6 +69,13 @@ async def get_link_preview(request: LinkPreviewRequest) -> LinkPreviewResponse:
     The endpoint is designed to handle multiple URLs in a single request
     to optimize performance when messages contain multiple links.
     
+    The flow for each URL is:
+    1. Check cache for existing metadata
+    2. If not cached, fetch HTML from URL
+    3. Parse HTML to extract metadata
+    4. Cache the result
+    5. Return metadata (or error if any step fails)
+    
     Args:
         request: LinkPreviewRequest with urls list and session_id
         
@@ -71,6 +86,8 @@ async def get_link_preview(request: LinkPreviewRequest) -> LinkPreviewResponse:
         HTTPException: 400 for invalid requests, 500 for server errors
         
     Requirements:
+    - 1.2: Fetch metadata for detected URLs
+    - 1.4: Handle errors gracefully with minimal preview
     - 3.1: Frontend sends request to backend API with list of URLs
     - 3.4: Backend returns structured response with metadata
     
@@ -108,25 +125,60 @@ async def get_link_preview(request: LinkPreviewRequest) -> LinkPreviewResponse:
         # Process each URL
         for url in request.urls:
             try:
-                # Extract domain for minimal fallback
-                domain = _extract_domain(url)
+                # Step 1: Check cache first
+                cached_metadata = await _metadata_cache.get(url)
+                if cached_metadata:
+                    logger.debug(f"Cache hit for URL: {url}")
+                    previews.append(cached_metadata)
+                    continue
                 
-                # TODO: Implement actual metadata fetching in future tasks
-                # For now, return minimal metadata with domain only
-                # This will be replaced with actual fetching logic in task 2
-                metadata = LinkMetadata(
-                    url=url,
-                    domain=domain,
-                    error="Metadata fetching not yet implemented"
-                )
+                logger.debug(f"Cache miss for URL: {url}, fetching...")
                 
+                # Step 2: Fetch HTML from URL
+                try:
+                    html = await _metadata_fetcher.fetch_html(url)
+                except FetchError as fetch_error:
+                    # Fetch failed - return minimal metadata with error
+                    logger.warning(f"Fetch failed for {url}: {fetch_error}")
+                    domain = _extract_domain(url)
+                    metadata = LinkMetadata(
+                        url=url,
+                        domain=domain,
+                        error=str(fetch_error)
+                    )
+                    # Cache the error result (with shorter TTL handled by cache)
+                    await _metadata_cache.set(url, metadata)
+                    previews.append(metadata)
+                    continue
+                
+                # Step 3: Parse HTML to extract metadata
+                try:
+                    metadata = _html_parser.parse_metadata(html, url)
+                    logger.debug(
+                        f"Successfully parsed metadata for {url}: "
+                        f"title={metadata.title}, domain={metadata.domain}"
+                    )
+                except Exception as parse_error:
+                    # Parse failed - return minimal metadata with error
+                    logger.warning(f"Parse failed for {url}: {parse_error}")
+                    domain = _extract_domain(url)
+                    metadata = LinkMetadata(
+                        url=url,
+                        domain=domain,
+                        error=f"Failed to parse metadata: {str(parse_error)}"
+                    )
+                
+                # Step 4: Cache the result
+                await _metadata_cache.set(url, metadata)
+                
+                # Step 5: Add to response
                 previews.append(metadata)
-                logger.debug(f"Processed URL: {url} -> domain: {domain}")
                 
             except Exception as url_error:
-                # If processing a single URL fails, include error in response
+                # Unexpected error processing this URL - include error in response
                 logger.warning(
-                    f"Failed to process URL {url}: {type(url_error).__name__}: {url_error}"
+                    f"Unexpected error processing URL {url}: "
+                    f"{type(url_error).__name__}: {url_error}"
                 )
                 previews.append(
                     LinkMetadata(

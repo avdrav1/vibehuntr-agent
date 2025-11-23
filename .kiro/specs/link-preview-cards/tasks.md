@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [-] 1. Set up backend infrastructure for link preview API
+- [x] 1. Set up backend infrastructure for link preview API
   - Create API endpoint structure and models
   - Set up error handling and logging
   - _Requirements: 3.1, 3.4_
@@ -18,17 +18,17 @@
   - Return structured metadata response
   - _Requirements: 3.1, 3.4_
 
-- [-] 1.3 Register link preview router in main app
+- [x] 1.3 Register link preview router in main app
   - Import and include link preview router in `backend/app/main.py`
   - Verify endpoint is accessible at `/api/link-preview`
   - _Requirements: 3.1_
 
-- [ ] 2. Implement metadata fetching service
+- [x] 2. Implement metadata fetching service
   - Create service to fetch HTML from URLs
   - Handle timeouts, redirects, and errors
   - _Requirements: 3.2, 5.1, 5.2_
 
-- [ ] 2.1 Create metadata fetcher service
+- [x] 2.1 Create metadata fetcher service
   - Create `backend/app/services/metadata_fetcher.py`
   - Implement `MetadataFetcher` class with async HTTP client (httpx)
   - Add `fetch_html()` method with 5-second timeout
@@ -36,11 +36,11 @@
   - Handle connection errors, timeouts, and HTTP errors
   - _Requirements: 3.2, 5.1, 5.2, 6.1, 6.2, 6.3_
 
-- [ ] 2.2 Write property test for metadata fetcher
+- [x] 2.2 Write property test for metadata fetcher
   - **Property 11: Fetch timeout**
   - **Validates: Requirements 4.4**
 
-- [ ] 2.3 Write unit tests for metadata fetcher
+- [x] 2.3 Write unit tests for metadata fetcher
   - Test successful HTML fetch
   - Test timeout handling
   - Test connection error handling
@@ -48,12 +48,12 @@
   - Test exclusion patterns (localhost, private IPs, data URIs)
   - _Requirements: 3.2, 5.1, 5.2, 6.2, 6.3_
 
-- [ ] 3. Implement HTML parsing service
+- [x] 3. Implement HTML parsing service
   - Create service to extract metadata from HTML
   - Parse Open Graph, Twitter Card, and standard meta tags
   - _Requirements: 3.3, 5.4_
 
-- [ ] 3.1 Create HTML parser service
+- [x] 3.1 Create HTML parser service
   - Create `backend/app/services/html_parser.py`
   - Implement `HTMLParser` class using BeautifulSoup4
   - Add `parse_metadata()` method
@@ -64,11 +64,11 @@
   - Extract favicon from link tags or /favicon.ico
   - _Requirements: 3.3_
 
-- [ ] 3.2 Write property test for HTML parser robustness
+- [x] 3.2 Write property test for HTML parser robustness
   - **Property 12: HTML parsing robustness**
   - **Validates: Requirements 3.3, 5.4**
 
-- [ ] 3.3 Write unit tests for HTML parser
+- [x] 3.3 Write unit tests for HTML parser
   - Test Open Graph tag extraction
   - Test Twitter Card tag extraction
   - Test standard meta tag extraction
@@ -77,12 +77,12 @@
   - Test missing tags fallback
   - _Requirements: 3.3, 5.4_
 
-- [ ] 4. Implement metadata caching service
+- [x] 4. Implement metadata caching service
   - Create in-memory cache for metadata
   - Implement TTL and LRU eviction
   - _Requirements: 3.5_
 
-- [ ] 4.1 Create metadata cache service
+- [x] 4.1 Create metadata cache service
   - Create `backend/app/services/metadata_cache.py`
   - Implement `MetadataCache` class with in-memory dict
   - Add `get()` and `set()` methods
@@ -91,11 +91,11 @@
   - Make thread-safe with asyncio locks
   - _Requirements: 3.5_
 
-- [ ] 4.2 Write property test for metadata caching
+- [x] 4.2 Write property test for metadata caching
   - **Property 9: Metadata caching**
   - **Validates: Requirements 3.5**
 
-- [ ] 4.3 Write unit tests for metadata cache
+- [x] 4.3 Write unit tests for metadata cache
   - Test cache hit returns cached data
   - Test cache miss returns None
   - Test cache expiration after TTL
@@ -103,23 +103,23 @@
   - Test thread safety with concurrent access
   - _Requirements: 3.5_
 
-- [ ] 5. Integrate services in link preview endpoint
+- [x] 5. Integrate services in link preview endpoint
   - Wire up fetcher, parser, and cache in API endpoint
   - Implement error handling and response formatting
   - _Requirements: 1.2, 1.4, 3.1, 3.4_
 
-- [ ] 5.1 Implement link preview endpoint logic
+- [x] 5.1 Implement link preview endpoint logic
   - Update `backend/app/api/link_preview.py` endpoint
   - For each URL: check cache, fetch HTML, parse metadata
   - Handle errors gracefully (return error in metadata object)
   - Return response with all metadata objects
   - _Requirements: 1.2, 1.4, 3.1, 3.4_
 
-- [ ] 5.2 Write property test for metadata fetch attempt
+- [x] 5.2 Write property test for metadata fetch attempt
   - **Property 3: Metadata fetch attempt**
   - **Validates: Requirements 1.2, 3.2, 3.3, 3.4**
 
-- [ ] 5.3 Write integration tests for link preview API
+- [x] 5.3 Write integration tests for link preview API
   - Test successful metadata fetch for valid URL
   - Test error handling for 404 response
   - Test error handling for timeout
@@ -127,7 +127,7 @@
   - Test cache hit scenario
   - _Requirements: 1.2, 1.4, 3.1, 3.5_
 
-- [ ] 6. Checkpoint - Ensure backend tests pass
+- [x] 6. Checkpoint - Ensure backend tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 7. Create frontend URL extraction utility
