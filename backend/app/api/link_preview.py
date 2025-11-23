@@ -18,6 +18,7 @@ from backend.app.models.link_preview import (
 from backend.app.services.metadata_fetcher import MetadataFetcher, FetchError
 from backend.app.services.html_parser import HTMLParser
 from backend.app.services.metadata_cache import MetadataCache
+from backend.app.core.config import get_settings
 
 
 # Configure logging
@@ -26,10 +27,21 @@ logger = logging.getLogger(__name__)
 # Create router
 router = APIRouter(prefix="/api", tags=["link-preview"])
 
-# Initialize services (singleton instances)
-_metadata_fetcher = MetadataFetcher(timeout=5, max_size=5_000_000)
+# Get settings
+settings = get_settings()
+
+# Initialize services (singleton instances) using configuration
+# Requirements: 6.5
+_metadata_fetcher = MetadataFetcher(
+    timeout=settings.link_preview_timeout,
+    max_size=settings.link_preview_max_size,
+    excluded_domains=settings.get_link_preview_excluded_domains()
+)
 _html_parser = HTMLParser()
-_metadata_cache = MetadataCache(ttl=3600, max_size=1000)
+_metadata_cache = MetadataCache(
+    ttl=settings.link_preview_cache_ttl,
+    max_size=1000
+)
 
 
 def _extract_domain(url: str) -> str:
@@ -115,6 +127,12 @@ async def get_link_preview(request: LinkPreviewRequest) -> LinkPreviewResponse:
         }
     """
     try:
+        # Check if link preview feature is enabled (Requirement 6.5)
+        if not settings.link_preview_enabled:
+            logger.info("Link preview feature is disabled")
+            # Return empty previews when feature is disabled
+            return LinkPreviewResponse(previews=[])
+        
         logger.info(
             f"Fetching link previews for {len(request.urls)} URLs "
             f"(session: {request.session_id})"

@@ -2,6 +2,15 @@
 
 React + TypeScript frontend for the Vibehuntr event planning agent with real-time streaming.
 
+## Features
+
+- **Real-time Streaming** - Agent responses stream in real-time for a natural conversation flow
+- **Link Preview Cards** - Automatic rich preview cards for URLs in messages with metadata, images, and favicons
+- **Venue Links** - Interactive venue buttons with Google Places integration
+- **Error Handling** - Graceful error messages and retry functionality
+- **Responsive Design** - Mobile-first design with Vibehuntr branding
+- **Accessibility** - WCAG compliant with keyboard navigation and screen reader support
+
 ## Prerequisites
 
 - Node.js 18+ (LTS recommended)
@@ -46,6 +55,7 @@ VITE_DEBUG=false
 |----------|-------------|----------|---------|
 | `VITE_API_URL` | Backend API base URL | No | http://localhost:8000 |
 | `VITE_DEBUG` | Enable debug logging | No | false |
+| `VITE_LINK_PREVIEW_ENABLED` | Enable link preview cards | No | true |
 
 **Note:** Vite requires environment variables to be prefixed with `VITE_` to be exposed to the client.
 
@@ -91,6 +101,8 @@ frontend/
 │   │   ├── ChatInput.tsx     # Message input field
 │   │   ├── Welcome.tsx       # Welcome screen
 │   │   ├── ErrorMessage.tsx  # Error display component
+│   │   ├── LinkPreview.tsx   # Link preview container
+│   │   ├── PreviewCard.tsx   # Link preview card UI
 │   │   └── index.ts          # Component exports
 │   ├── hooks/
 │   │   ├── useChat.ts        # Chat state management
@@ -98,7 +110,10 @@ frontend/
 │   ├── services/
 │   │   └── api.ts            # API client
 │   ├── types/
-│   │   └── index.ts          # TypeScript types
+│   │   ├── index.ts          # TypeScript types
+│   │   └── linkPreview.ts    # Link preview types
+│   ├── utils/
+│   │   └── urlExtractor.ts   # URL extraction utility
 │   ├── test/
 │   │   ├── setup.ts          # Test configuration
 │   │   └── *.test.tsx        # Test files
@@ -337,6 +352,12 @@ For production deployment to Google Cloud Platform:
 - **[Deployment Checklist](../PRODUCTION_CHECKLIST.md)** - Pre-deployment checklist
 
 The frontend is deployed to Cloud Storage with Cloud CDN for global distribution.
+
+## Feature Documentation
+
+- **[Link Preview Cards](../.kiro/specs/link-preview-cards/README.md)** - Comprehensive guide to the link preview feature including configuration, troubleshooting, and API reference
+- **[Venue Links Feature](./VENUE_LINKS_FEATURE.md)** - Documentation for the venue links integration with Google Places
+- **[Error Handling Demo](./ERROR_HANDLING_DEMO.md)** - Error handling patterns and examples
 
 ## Additional Resources
 

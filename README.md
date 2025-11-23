@@ -87,6 +87,7 @@ vibehuntr-agent/
 ### React + FastAPI Application
 
 - **Real-time Streaming**: Server-Sent Events (SSE) for token-by-token response streaming
+- **Link Preview Cards**: Automatic rich preview cards for URLs with metadata, images, and favicons
 - **Session Management**: Persistent conversation history across page reloads
 - **Modern UI**: Vibehuntr-branded interface with Tailwind CSS and glassmorphism effects
 - **Error Handling**: Graceful error recovery with user-friendly messages
@@ -97,7 +98,8 @@ vibehuntr-agent/
 ### Agent Capabilities
 
 - **Event Planning**: Intelligent event recommendations based on group preferences
-- **Google Places Integration**: Real venue and restaurant suggestions
+- **Google Places Integration**: Real venue and restaurant suggestions with interactive venue links
+- **Link Preview Cards**: Automatic metadata extraction and rich preview cards for shared URLs
 - **Document Retrieval**: RAG-powered answers from indexed documents
 - **Conversational AI**: Natural language understanding with Gemini 2.0 Flash
 - **Context Retention**: Maintains conversation context across multiple turns
@@ -285,6 +287,12 @@ The project includes a `GEMINI.md` file that provides context for AI tools like 
 - **[Backend README](backend/README.md)** - FastAPI backend setup and API documentation
 - **[Frontend README](frontend/README.md)** - React frontend setup and development guide
 - **[Environment Variables](ENVIRONMENT_VARIABLES.md)** - All configuration options explained
+
+### Feature Documentation
+
+- **[Link Preview Cards](.kiro/specs/link-preview-cards/README.md)** - Comprehensive guide to the link preview feature including configuration, troubleshooting, and API reference
+- **[Venue Links Feature](frontend/VENUE_LINKS_FEATURE.md)** - Documentation for the venue links integration with Google Places
+- **[Error Handling Demo](frontend/ERROR_HANDLING_DEMO.md)** - Error handling patterns and examples
 
 ### Deployment Guides
 

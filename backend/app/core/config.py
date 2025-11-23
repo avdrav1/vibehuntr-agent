@@ -27,6 +27,11 @@ class Settings(BaseSettings):
         google_places_api_key: Google Places API key
         backend_host: Backend host address
         backend_port: Backend port number
+        link_preview_enabled: Enable/disable link preview feature
+        link_preview_timeout: Timeout for fetching link metadata (seconds)
+        link_preview_cache_ttl: Cache TTL for link metadata (seconds)
+        link_preview_max_size: Maximum response size for link fetching (bytes)
+        link_preview_excluded_domains: Comma-separated list of domains to exclude
     """
     
     # Application settings
@@ -46,6 +51,14 @@ class Settings(BaseSettings):
     # Server configuration
     backend_host: str = "0.0.0.0"
     backend_port: int = 8000
+    
+    # Link Preview configuration
+    # Requirements: 6.5
+    link_preview_enabled: bool = True
+    link_preview_timeout: int = 5
+    link_preview_cache_ttl: int = 3600
+    link_preview_max_size: int = 5000000
+    link_preview_excluded_domains: str = ""
     
     model_config = SettingsConfigDict(
         # Look for .env in project root - works when running from project root
@@ -87,6 +100,20 @@ class Settings(BaseSettings):
     def is_development(self) -> bool:
         """Check if running in development environment."""
         return self.environment.lower() == "development"
+    
+    def get_link_preview_excluded_domains(self) -> List[str]:
+        """
+        Get link preview excluded domains as a list.
+        
+        Returns:
+            List of domain names to exclude from link preview generation
+            
+        Requirements: 6.5
+        """
+        if not self.link_preview_excluded_domains:
+            return []
+        domains = [domain.strip() for domain in self.link_preview_excluded_domains.split(",")]
+        return [domain for domain in domains if domain]
 
 
 @lru_cache()

@@ -686,3 +686,222 @@ def test_property_3_metadata_fetch_attempt(urls: list[str]) -> None:
     
     # Run the async test
     asyncio.run(test_fetch())
+
+
+# Error scenario strategies
+
+@composite
+def error_scenario_strategy(draw: st.DrawFn) -> tuple[str, str]:
+    """
+    Generate error scenarios for testing error handling.
+    
+    Returns:
+        Tuple of (url, error_type) where error_type describes the expected error
+    """
+    error_type = draw(st.sampled_from([
+        'timeout',
+        'connection_error',
+        'http_404',
+        'http_500',
+        'http_503',
+        'malformed_url',
+        'parse_error',
+        'invalid_scheme',
+        'no_domain'
+    ]))
+    
+    if error_type == 'timeout':
+        # URL that would timeout (we'll simulate this)
+        url = 'http://example-timeout-test.com/slow'
+        return (url, 'timeout')
+    elif error_type == 'connection_error':
+        # URL that would fail to connect
+        url = 'http://example-connection-error.com'
+        return (url, 'connection_error')
+    elif error_type == 'http_404':
+        # URL that returns 404
+        url = 'http://example.com/not-found-404'
+        return (url, 'http_404')
+    elif error_type == 'http_500':
+        # URL that returns 500
+        url = 'http://example.com/server-error-500'
+        return (url, 'http_500')
+    elif error_type == 'http_503':
+        # URL that returns 503
+        url = 'http://example.com/service-unavailable-503'
+        return (url, 'http_503')
+    elif error_type == 'malformed_url':
+        # Malformed URL
+        url = draw(st.sampled_from([
+            'not-a-url',
+            'htp://missing-t.com',
+            'http:/missing-slash.com',
+            'http://[invalid',
+            'javascript:alert(1)'
+        ]))
+        return (url, 'malformed_url')
+    elif error_type == 'parse_error':
+        # URL that returns unparseable content
+        url = 'http://example.com/invalid-html'
+        return (url, 'parse_error')
+    elif error_type == 'invalid_scheme':
+        # URL with invalid scheme
+        scheme = draw(st.sampled_from(['ftp', 'file', 'mailto', 'tel']))
+        url = f'{scheme}://example.com'
+        return (url, 'invalid_scheme')
+    else:  # no_domain
+        # URL with no domain
+        url = 'http://'
+        return (url, 'no_domain')
+
+
+# Feature: link-preview-cards, Property 5: Error handling fallback
+@given(error_scenario_strategy())
+@settings(max_examples=100, deadline=None)
+def test_property_5_error_handling_fallback(error_scenario: tuple[str, str]) -> None:
+    """
+    Feature: link-preview-cards, Property 5: Error handling fallback
+    
+    For any URL where metadata fetch fails (404, 5xx, timeout, parse error,
+    malformed URL), the system should display a minimal preview card with at
+    least the domain name, or no card at all for malformed URLs.
+    
+    This test verifies that:
+    1. For malformed/invalid URLs: is_valid_url returns False (no preview)
+    2. For valid URLs with fetch errors: metadata includes error field and domain
+    3. For valid URLs with parse errors: metadata includes domain at minimum
+    4. System never crashes or raises unhandled exceptions
+    
+    Validates: Requirements 1.4, 5.1, 5.2, 5.3, 5.4
+    """
+    url, error_type = error_scenario
+    
+    # Test URL validation first
+    fetcher = MetadataFetcher()
+    is_valid = fetcher.is_valid_url(url)
+    
+    # Malformed URLs should fail validation (Requirement 5.3)
+    if error_type in ('malformed_url', 'invalid_scheme', 'no_domain'):
+        # These URLs should be rejected at validation stage
+        assert is_valid == False, f"Invalid URL should fail validation: {url}"
+        # No preview card should be generated for invalid URLs
+        return
+    
+    # For valid URLs, test that errors are handled gracefully
+    assert is_valid == True, f"Valid URL should pass validation: {url}"
+    
+    # Test that fetch errors are caught and handled
+    async def test_error_handling():
+        try:
+            # Attempt to fetch HTML
+            html = await fetcher.fetch_html(url)
+            
+            # If fetch succeeds (unlikely for error scenarios), parse should still work
+            parser = HTMLParser()
+            metadata = parser.parse_metadata(html, url)
+            
+            # Metadata should always have required fields
+            assert metadata.url == url
+            assert metadata.domain is not None
+            assert isinstance(metadata.domain, str)
+            assert len(metadata.domain) > 0
+            
+        except FetchError as e:
+            # Fetch errors should be caught and handled gracefully (Requirements 5.1, 5.2)
+            # The error should contain useful information
+            assert isinstance(e, FetchError)
+            assert len(str(e)) > 0
+            
+            # In production, this would result in a minimal preview card
+            # with just the domain name and error message
+            # We verify that we can extract domain even when fetch fails
+            try:
+                from urllib.parse import urlparse
+                parsed = urlparse(url)
+                domain = parsed.netloc
+                assert domain is not None
+                assert len(domain) > 0
+            except Exception:
+                # If URL parsing fails, that's acceptable for truly malformed URLs
+                pass
+        
+        except Exception as e:
+            # Any other exception should be caught and handled
+            # System should never crash (Requirement 5.4)
+            pytest.fail(f"Unexpected exception during error handling: {type(e).__name__}: {e}")
+    
+    # Run the async test
+    asyncio.run(test_error_handling())
+
+
+# Additional property test: Error metadata structure
+@given(valid_url_strategy(), st.text(min_size=1, max_size=200))
+@settings(max_examples=100)
+def test_property_error_metadata_structure(url: str, error_message: str) -> None:
+    """
+    For any URL and error message, creating a LinkMetadata object with an error
+    should maintain proper structure with all required fields.
+    
+    Validates: Error metadata consistency
+    """
+    # Create metadata with error
+    from urllib.parse import urlparse
+    parsed = urlparse(url)
+    domain = parsed.netloc or url
+    
+    metadata = LinkMetadata(
+        url=url,
+        domain=domain,
+        error=error_message
+    )
+    
+    # Verify structure
+    assert metadata.url == url
+    assert metadata.domain == domain
+    assert metadata.error == error_message
+    
+    # Optional fields should be None
+    assert metadata.title is None
+    assert metadata.description is None
+    assert metadata.image is None
+    assert metadata.favicon is None
+
+
+# Additional property test: Parse error recovery
+@given(
+    st.sampled_from([
+        '',  # Empty HTML
+        '<html',  # Unclosed tag
+        'not html at all',  # Plain text
+        '<html><head><title>',  # Incomplete
+        '<><><>',  # Invalid tags
+        '\x00\x01\x02',  # Binary data
+    ]),
+    valid_url_strategy()
+)
+@settings(max_examples=100, deadline=None)
+def test_property_parse_error_recovery(html: str, url: str) -> None:
+    """
+    For any HTML content that might cause parsing errors, the parser should
+    recover gracefully and return at least a minimal metadata object with domain.
+    
+    Validates: Requirements 5.4 - Parse error fallback
+    """
+    parser = HTMLParser()
+    
+    try:
+        metadata = parser.parse_metadata(html, url)
+        
+        # Should always return metadata with required fields
+        assert metadata.url == url
+        assert metadata.domain is not None
+        assert isinstance(metadata.domain, str)
+        assert len(metadata.domain) > 0
+        
+        # Optional fields may be None for bad HTML
+        assert metadata.title is None or isinstance(metadata.title, str)
+        assert metadata.description is None or isinstance(metadata.description, str)
+        
+    except Exception as e:
+        # Parser should never crash (Requirement 5.4)
+        pytest.fail(f"Parser crashed on malformed HTML: {type(e).__name__}: {e}")

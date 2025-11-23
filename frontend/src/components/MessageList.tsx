@@ -7,6 +7,7 @@ interface MessageListProps {
   messages: MessageType[];
   isStreaming?: boolean;
   isLoading?: boolean;
+  sessionId?: string;
 }
 
 /**
@@ -17,7 +18,7 @@ interface MessageListProps {
  * - 6.5: Append new messages without duplicating existing ones
  * - 7.5: Show loading indicator while waiting for first token
  */
-export function MessageList({ messages, isStreaming = false, isLoading = false }: MessageListProps) {
+export function MessageList({ messages, isStreaming = false, isLoading = false, sessionId = 'default' }: MessageListProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -58,6 +59,7 @@ export function MessageList({ messages, isStreaming = false, isLoading = false }
             key={`${message.role}-${index}-${message.timestamp || ''}`}
             message={message}
             isStreaming={showStreamingIndicator}
+            sessionId={sessionId}
           />
         );
       })}

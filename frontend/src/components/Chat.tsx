@@ -61,7 +61,7 @@ export function Chat({
         <Header onNewConversation={onNewConversation} isConnected={isConnected} />
 
         {/* Message list with auto-scroll */}
-        <MessageList messages={messages} isStreaming={isStreaming} isLoading={isLoading} />
+        <MessageList messages={messages} isStreaming={isStreaming} isLoading={isLoading} sessionId={sessionId} />
 
         {/* Input area - disabled during streaming or loading */}
         <ChatInput onSend={onSendMessage} disabled={isStreaming || isLoading} isLoading={isLoading} />

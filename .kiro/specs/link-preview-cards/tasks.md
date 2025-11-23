@@ -233,12 +233,12 @@
   - Test image alt text present
   - _Requirements: 1.3, 1.4, 2.4, 2.5, 7.1, 7.4_
 
-- [ ] 11. Create LinkPreview container component
+- [x] 11. Create LinkPreview container component
   - Fetch metadata and manage state
   - Handle async loading and errors
   - _Requirements: 1.2, 1.4, 4.1, 4.2, 4.4_
 
-- [ ] 11.1 Create LinkPreview component
+- [x] 11.1 Create LinkPreview component
   - Create `frontend/src/components/LinkPreview.tsx`
   - Accept `url` and `sessionId` props
   - Use `useState` for metadata and loading state
@@ -250,11 +250,11 @@
   - Handle timeout (show minimal card after 5 seconds)
   - _Requirements: 1.2, 1.4, 4.1, 4.2, 4.4_
 
-- [ ] 11.2 Write property test for async rendering
+- [x] 11.2 Write property test for async rendering
   - **Property 10: Async rendering**
   - **Validates: Requirements 4.1**
 
-- [ ] 11.3 Write unit tests for LinkPreview component
+- [x] 11.3 Write unit tests for LinkPreview component
   - Test loading state displayed initially
   - Test preview card rendered after fetch
   - Test error state on fetch failure
@@ -262,12 +262,12 @@
   - Test minimal card on error
   - _Requirements: 1.2, 1.4, 4.1, 4.2, 4.4_
 
-- [ ] 12. Enhance Message component with link previews
+- [x] 12. Enhance Message component with link previews
   - Integrate URL extraction and preview rendering
   - Maintain existing venue link functionality
   - _Requirements: 1.1, 1.5, 6.4_
 
-- [ ] 12.1 Update Message component to include link previews
+- [x] 12.1 Update Message component to include link previews
   - Update `frontend/src/components/Message.tsx`
   - Import `extractURLs` and `LinkPreview` components
   - Extract URLs from message content using `useMemo`
@@ -277,15 +277,15 @@
   - Ensure previews render below message content
   - _Requirements: 1.1, 1.5, 6.4_
 
-- [ ] 12.2 Write property test for multiple URL ordering
+- [x] 12.2 Write property test for multiple URL ordering
   - **Property 6: Multiple URL ordering**
   - **Validates: Requirements 1.5**
 
-- [ ] 12.3 Write property test for frontend-backend integration
+- [x] 12.3 Write property test for frontend-backend integration
   - **Property 8: Frontend-backend integration**
   - **Validates: Requirements 3.1**
 
-- [ ] 12.4 Write integration tests for Message component with link previews
+- [x] 12.4 Write integration tests for Message component with link previews
   - Test message with single URL shows one preview
   - Test message with multiple URLs shows multiple previews in order
   - Test message with venue link URL doesn't duplicate preview
@@ -293,12 +293,12 @@
   - Test preview cards render after message content
   - _Requirements: 1.1, 1.5, 6.4_
 
-- [ ] 13. Add CSS styling for link preview cards
+- [x] 13. Add CSS styling for link preview cards
   - Create Vibehuntr-themed styles for preview cards
   - Add loading skeleton styles
   - _Requirements: 2.1, 4.2_
 
-- [ ] 13.1 Add link preview styles to index.css
+- [x] 13.1 Add link preview styles to index.css
   - Update `frontend/src/index.css`
   - Add `.link-preview-card` styles with gradient border
   - Add `.link-preview-loading` skeleton animation
@@ -308,11 +308,11 @@
   - Ensure responsive design (mobile and desktop)
   - _Requirements: 2.1, 4.2_
 
-- [ ] 14. Add configuration for link preview feature
+- [x] 14. Add configuration for link preview feature
   - Add environment variables for feature toggle and settings
   - _Requirements: 6.5_
 
-- [ ] 14.1 Add backend configuration
+- [x] 14.1 Add backend configuration
   - Update `backend/app/core/config.py`
   - Add `LINK_PREVIEW_ENABLED` setting (default: True)
   - Add `LINK_PREVIEW_TIMEOUT` setting (default: 5)
@@ -321,28 +321,28 @@
   - Add `LINK_PREVIEW_EXCLUDED_DOMAINS` setting (default: empty list)
   - _Requirements: 6.5_
 
-- [ ] 14.2 Add frontend configuration
+- [x] 14.2 Add frontend configuration
   - Update `frontend/.env.example`
   - Add `VITE_LINK_PREVIEW_ENABLED` variable
   - Document configuration options
   - _Requirements: 6.5_
 
-- [ ] 15. Checkpoint - Ensure all tests pass
+- [x] 15. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 16. Add error handling property test
+- [x] 16. Add error handling property test
   - Test error fallback behavior across various error scenarios
   - _Requirements: 1.4, 5.1, 5.2, 5.3, 5.4_
 
-- [ ] 16.1 Write property test for error handling fallback
+- [x] 16.1 Write property test for error handling fallback
   - **Property 5: Error handling fallback**
   - **Validates: Requirements 1.4, 5.1, 5.2, 5.3, 5.4**
 
-- [ ] 17. Add end-to-end integration test
+- [x] 17. Add end-to-end integration test
   - Test complete flow from message to preview card display
   - _Requirements: 1.1, 1.2, 1.3, 3.1, 3.2, 3.3, 3.4_
 
-- [ ] 17.1 Write end-to-end integration test
+- [x] 17.1 Write end-to-end integration test
   - Create test that sends message with URL
   - Verify URL extraction
   - Verify API call to backend
@@ -351,12 +351,12 @@
   - Test with mock HTTP responses
   - _Requirements: 1.1, 1.2, 1.3, 3.1, 3.2, 3.3, 3.4_
 
-- [ ] 18. Update documentation
+- [x] 18. Update documentation
   - Document the link preview feature
   - Add usage examples and configuration guide
   - _Requirements: All_
 
-- [ ] 18.1 Create link preview feature documentation
+- [x] 18.1 Create link preview feature documentation
   - Create `.kiro/specs/link-preview-cards/README.md`
   - Document feature overview and benefits
   - Document configuration options
@@ -366,11 +366,11 @@
   - Document performance considerations
   - _Requirements: All_
 
-- [ ] 18.2 Update main README
+- [x] 18.2 Update main README
   - Update `README.md` or `frontend/README.md`
   - Add link preview feature to feature list
   - Link to detailed documentation
   - _Requirements: All_
 
-- [ ] 19. Final checkpoint - Ensure all tests pass
+- [x] 19. Final checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.

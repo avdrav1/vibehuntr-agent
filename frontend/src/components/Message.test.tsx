@@ -225,4 +225,118 @@ describe('Message Component', () => {
       expect(messageElement).toHaveClass('fade-in');
     });
   });
+
+  describe('Link Preview Integration (Requirements 1.1, 1.5, 6.4)', () => {
+    it('renders link preview for message with single URL', () => {
+      const message: MessageType = {
+        role: 'assistant',
+        content: 'Check out this link: https://example.com',
+      };
+
+      const { container } = render(<Message message={message} sessionId="test-session" />);
+      
+      // Should have a preview container
+      const previewContainer = container.querySelector('.mt-4.space-y-3');
+      expect(previewContainer).toBeInTheDocument();
+      
+      // Should have one LinkPreview component
+      expect(previewContainer?.children.length).toBe(1);
+    });
+
+    it('renders multiple link previews in order for message with multiple URLs', () => {
+      const message: MessageType = {
+        role: 'assistant',
+        content: 'Check these links: https://example.com and https://test.com and https://demo.org',
+      };
+
+      const { container } = render(<Message message={message} sessionId="test-session" />);
+      
+      // Should have a preview container
+      const previewContainer = container.querySelector('.mt-4.space-y-3');
+      expect(previewContainer).toBeInTheDocument();
+      
+      // Should have three LinkPreview components
+      expect(previewContainer?.children.length).toBe(3);
+    });
+
+    it('does not render link previews for user messages', () => {
+      const message: MessageType = {
+        role: 'user',
+        content: 'Check out https://example.com',
+      };
+
+      const { container } = render(<Message message={message} sessionId="test-session" />);
+      
+      // Should not have a preview container
+      const previewContainer = container.querySelector('.mt-4.space-y-3');
+      expect(previewContainer).not.toBeInTheDocument();
+    });
+
+    it('does not render link previews when no URLs present', () => {
+      const message: MessageType = {
+        role: 'assistant',
+        content: 'This message has no URLs',
+      };
+
+      const { container } = render(<Message message={message} sessionId="test-session" />);
+      
+      // Should not have a preview container
+      const previewContainer = container.querySelector('.mt-4.space-y-3');
+      expect(previewContainer).not.toBeInTheDocument();
+    });
+
+    it('does not duplicate venue link URLs in link previews', () => {
+      const message: MessageType = {
+        role: 'assistant',
+        content: `
+Check out this venue:
+
+**Great Restaurant**
+🌐 Website: https://restaurant.com
+
+Also check: https://example.com
+        `.trim(),
+      };
+
+      const { container } = render(<Message message={message} sessionId="test-session" />);
+      
+      // Should have venue link button
+      expect(screen.getByText('Visit Great Restaurant')).toBeInTheDocument();
+      
+      // Should have preview container for non-venue URLs
+      const previewContainer = container.querySelector('.mt-4.space-y-3');
+      expect(previewContainer).toBeInTheDocument();
+      
+      // Should only have one preview (for example.com, not restaurant.com)
+      expect(previewContainer?.children.length).toBe(1);
+    });
+
+    it('renders preview cards after message content', () => {
+      const message: MessageType = {
+        role: 'assistant',
+        content: 'Message content https://example.com',
+      };
+
+      const { container } = render(<Message message={message} sessionId="test-session" />);
+      
+      // Get the message content div and preview container
+      const messageContent = container.querySelector('.text-sm.leading-relaxed');
+      const previewContainer = container.querySelector('.mt-4.space-y-3');
+      
+      expect(messageContent).toBeInTheDocument();
+      expect(previewContainer).toBeInTheDocument();
+      
+      // Preview container should come after message content in DOM order
+      const messageElement = container.firstChild;
+      const children = Array.from(messageElement?.childNodes || []);
+      const contentIndex = children.findIndex(node => 
+        (node as Element).classList?.contains('text-sm')
+      );
+      const previewIndex = children.findIndex(node => 
+        (node as Element).classList?.contains('space-y-3')
+      );
+      
+      expect(previewIndex).toBeGreaterThan(contentIndex);
+    });
+  });
 });

@@ -1,9 +1,12 @@
 import type { Message as MessageType } from '../types';
 import { useMemo } from 'react';
+import { extractURLs } from '../utils/urlExtractor';
+import { LinkPreview } from './LinkPreview';
 
 interface MessageProps {
   message: MessageType;
   isStreaming?: boolean;
+  sessionId?: string;
 }
 
 interface VenueLink {
@@ -19,8 +22,11 @@ interface VenueLink {
  * - 9.2: Vibehuntr styling
  * - 7.3: Show visual indicator during streaming
  * - 7.4: Remove indicator when streaming completes
+ * - 1.1: Extract URLs from message content
+ * - 1.5: Display preview cards for all URLs in order
+ * - 6.4: Exclude URLs already handled by venue links
  */
-export function Message({ message, isStreaming = false }: MessageProps) {
+export function Message({ message, isStreaming = false, sessionId = 'default' }: MessageProps) {
   const isUser = message.role === 'user';
   
   /**
@@ -58,6 +64,24 @@ export function Message({ message, isStreaming = false }: MessageProps) {
     }
     
     return links;
+  }, [message.content, isUser]);
+  
+  /**
+   * Extract URLs for link previews (Requirements 1.1, 1.5, 6.4)
+   * - Extract all valid HTTP/HTTPS URLs from message content
+   * - Filter out URLs already handled by venue links to avoid duplication
+   * - Maintain order of URLs as they appear in the message
+   */
+  const previewURLs = useMemo(() => {
+    // Only extract URLs from assistant messages
+    if (isUser || !message.content) return [];
+    
+    // Extract all valid URLs from message content
+    const extractedURLs = extractURLs(message.content);
+    
+    // The extractURLs function already filters out venue link URLs
+    // Return the URLs in the order they appear
+    return extractedURLs.map(extracted => extracted.url);
   }, [message.content, isUser]);
   
   // Format timestamp if available
@@ -175,6 +199,19 @@ export function Message({ message, isStreaming = false }: MessageProps) {
               <span className="venue-link-text">Visit {venue.name}</span>
               <span className="venue-link-arrow">→</span>
             </a>
+          ))}
+        </div>
+      )}
+      
+      {/* Link preview cards - show for URLs not handled by venue links (Requirements 1.1, 1.5, 6.4, 6.5) */}
+      {previewURLs.length > 0 && import.meta.env.VITE_LINK_PREVIEW_ENABLED !== 'false' && (
+        <div className="mt-4 space-y-3">
+          {previewURLs.map((url, index) => (
+            <LinkPreview
+              key={`${url}-${index}`}
+              url={url}
+              sessionId={sessionId}
+            />
           ))}
         </div>
       )}

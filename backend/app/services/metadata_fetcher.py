@@ -32,7 +32,8 @@ class MetadataFetcher:
         timeout: int = 5,
         max_size: int = 5_000_000,
         max_redirects: int = 3,
-        user_agent: str = "VibehuntrBot/1.0"
+        user_agent: str = "VibehuntrBot/1.0",
+        excluded_domains: Optional[list[str]] = None
     ):
         """
         Initialize metadata fetcher.
@@ -42,11 +43,13 @@ class MetadataFetcher:
             max_size: Maximum response size in bytes (default: 5MB)
             max_redirects: Maximum number of redirects to follow (default: 3)
             user_agent: User agent string for requests
+            excluded_domains: List of domain names to exclude (default: None)
         """
         self.timeout = timeout
         self.max_size = max_size
         self.max_redirects = max_redirects
         self.user_agent = user_agent
+        self.excluded_domains = excluded_domains or []
         
         # Compile regex patterns for efficiency
         self._data_uri_pattern = re.compile(r'^data:', re.IGNORECASE)
@@ -137,6 +140,7 @@ class MetadataFetcher:
         - Private IP ranges (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16)
         - Link-local addresses (169.254.0.0/16)
         - Data URIs and blob URLs
+        - Domains in excluded_domains list (Requirement 6.5)
         
         Args:
             url: URL to check
@@ -154,6 +158,15 @@ class MetadataFetcher:
             
             if not hostname:
                 return True
+            
+            # Check if domain is in excluded list (Requirement 6.5)
+            if self.excluded_domains:
+                hostname_lower = hostname.lower()
+                for excluded_domain in self.excluded_domains:
+                    excluded_lower = excluded_domain.lower()
+                    # Check exact match or subdomain match
+                    if hostname_lower == excluded_lower or hostname_lower.endswith(f'.{excluded_lower}'):
+                        return True
             
             # Check for localhost
             if hostname.lower() in ('localhost', '127.0.0.1', '::1'):
