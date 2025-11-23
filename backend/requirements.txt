@@ -1,0 +1,28 @@
+# FastAPI and server
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+sse-starlette>=1.8.0
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+python-dotenv>=1.0.0
+
+# Existing dependencies from main project
+google-adk>=1.15.0,<2.0.0
+langchain~=0.3.24
+langchain-core~=0.3.55
+langchain-community~=0.3.17
+langchain-google-vertexai~=2.0.7
+langchain-google-community[vertexaisearch]~=2.0.7
+langchain-openai~=0.3.5
+Jinja2~=3.1.6
+opentelemetry-exporter-gcp-trace>=1.9.0,<2.0.0
+google-cloud-logging>=3.12.0,<4.0.0
+google-cloud-aiplatform[evaluation,agent-engines]>=1.118.0,<2.0.0
+protobuf>=6.31.1,<7.0.0
+click>=8.0.0,<9.0.0
+
+# Testing dependencies
+pytest>=8.3.4,<9.0.0
+pytest-asyncio>=0.23.8,<1.0.0
+nest-asyncio>=1.6.0,<2.0.0
+hypothesis>=6.0.0,<7.0.0

@@ -1,0 +1,117 @@
+import { useState, useRef } from 'react';
+import type { KeyboardEvent } from 'react';
+
+interface ChatInputProps {
+  onSend: (message: string) => void;
+  disabled?: boolean;
+  isLoading?: boolean;
+}
+
+/**
+ * ChatInput component provides a textarea for user input with send functionality
+ * Implements Requirements:
+ * - 1.4: React state management for input
+ * - 7.5: Disable during streaming and loading
+ * - 9.3: Vibehuntr button styling
+ */
+export function ChatInput({ onSend, disabled = false, isLoading = false }: ChatInputProps) {
+  const [input, setInput] = useState('');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const handleSend = () => {
+    const trimmedInput = input.trim();
+    if (trimmedInput && !disabled) {
+      onSend(trimmedInput);
+      setInput('');
+      
+      // Reset textarea height
+      if (textareaRef.current) {
+        textareaRef.current.style.height = 'auto';
+      }
+    }
+  };
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    // Send on Enter (without Shift)
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value);
+    
+    // Auto-resize textarea
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  };
+
+  return (
+    <div className="glass p-4">
+      <div className="flex gap-3 items-end">
+        {/* Textarea */}
+        <textarea
+          ref={textareaRef}
+          value={input}
+          onChange={handleInputChange}
+          onKeyDown={handleKeyDown}
+          disabled={disabled}
+          placeholder={
+            isLoading 
+              ? "Loading response..." 
+              : disabled 
+                ? "Waiting for response..." 
+                : "Type your message... (Shift+Enter for new line)"
+          }
+          className="input-field resize-none overflow-hidden"
+          style={{
+            minHeight: '2.5rem',
+            maxHeight: '10rem',
+          }}
+          rows={1}
+          aria-label="Message input"
+        />
+
+        {/* Send Button */}
+        <button
+          onClick={handleSend}
+          disabled={disabled || !input.trim()}
+          className="btn-primary flex items-center justify-center"
+          style={{
+            minWidth: '3rem',
+            height: '2.5rem',
+            opacity: disabled || !input.trim() ? 0.5 : 1,
+            cursor: disabled || !input.trim() ? 'not-allowed' : 'pointer',
+          }}
+          aria-label="Send message"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M22 2L11 13" />
+            <path d="M22 2L15 22L11 13L2 9L22 2Z" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Helper text */}
+      <div 
+        className="text-xs mt-2" 
+        style={{ color: 'var(--color-text-muted)' }}
+      >
+        Press Enter to send, Shift+Enter for new line
+      </div>
+    </div>
+  );
+}

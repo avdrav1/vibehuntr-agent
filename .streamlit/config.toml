@@ -1,0 +1,16 @@
+[theme]
+# Vibehuntr Brand Theme
+primaryColor = "#FF6B6B"  # Vibrant coral/red for primary actions
+backgroundColor = "#0F0F1E"  # Deep dark blue/purple background
+secondaryBackgroundColor = "#1A1A2E"  # Slightly lighter for cards
+textColor = "#FFFFFF"  # White text
+font = "sans serif"  # Clean modern font
+
+[browser]
+gatherUsageStats = false
+
+[server]
+headless = true
+port = 8501
+enableCORS = false
+enableXsrfProtection = true

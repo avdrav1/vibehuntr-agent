@@ -1,0 +1,10 @@
+{
+  "id": "dd283279-7c91-40be-b58e-1a816eb577be",
+  "name": "Test Group",
+  "member_ids": [
+    "a91fbe04-61d8-460f-b2ed-bafae6ee9d39",
+    "e2a2a678-c12b-4232-abaa-cb26aca23200"
+  ],
+  "created_at": "2025-11-19T11:04:41.085253",
+  "priority_member_ids": []
+}

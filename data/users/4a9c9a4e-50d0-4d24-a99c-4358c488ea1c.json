@@ -1,0 +1,15 @@
+{
+  "id": "4a9c9a4e-50d0-4d24-a99c-4358c488ea1c",
+  "name": "Jane Doe",
+  "email": "jane@gmail.com",
+  "preference_profile": {
+    "user_id": "4a9c9a4e-50d0-4d24-a99c-4358c488ea1c",
+    "activity_preferences": {},
+    "budget_max": null,
+    "location_preferences": [],
+    "dietary_restrictions": [],
+    "accessibility_needs": [],
+    "updated_at": "2025-11-19T16:44:17.561908"
+  },
+  "availability_windows": []
+}

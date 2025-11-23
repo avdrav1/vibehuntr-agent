@@ -1,0 +1,15 @@
+{
+  "id": "84d7f145-2d6c-4f18-bca9-30e8caebd648",
+  "name": "John Doe",
+  "email": "john@gmail.com",
+  "preference_profile": {
+    "user_id": "84d7f145-2d6c-4f18-bca9-30e8caebd648",
+    "activity_preferences": {},
+    "budget_max": null,
+    "location_preferences": [],
+    "dietary_restrictions": [],
+    "accessibility_needs": [],
+    "updated_at": "2025-11-19T16:44:17.558613"
+  },
+  "availability_windows": []
+}

@@ -1,0 +1,15 @@
+{
+  "id": "a91fbe04-61d8-460f-b2ed-bafae6ee9d39",
+  "name": "Alice",
+  "email": "alice@example.com",
+  "preference_profile": {
+    "user_id": "a91fbe04-61d8-460f-b2ed-bafae6ee9d39",
+    "activity_preferences": {},
+    "budget_max": null,
+    "location_preferences": [],
+    "dietary_restrictions": [],
+    "accessibility_needs": [],
+    "updated_at": "2025-11-19T04:43:44.907575"
+  },
+  "availability_windows": []
+}

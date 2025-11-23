@@ -1,0 +1,20 @@
+{
+  "id": "6d2e6d2a-114a-4a38-b5c2-8ba575ccd2b2",
+  "name": "Test Hike",
+  "activity_type": "hiking",
+  "location": {
+    "name": "Mountain Vista Trail",
+    "address": "Mountain Vista Trail",
+    "latitude": 0.0,
+    "longitude": 0.0
+  },
+  "start_time": "2025-01-25T10:00:00",
+  "end_time": "2025-01-25T13:00:00",
+  "participant_ids": [
+    "a91fbe04-61d8-460f-b2ed-bafae6ee9d39",
+    "e2a2a678-c12b-4232-abaa-cb26aca23200"
+  ],
+  "status": "confirmed",
+  "budget_per_person": 25.0,
+  "description": "Beautiful mountain trail with scenic views"
+}

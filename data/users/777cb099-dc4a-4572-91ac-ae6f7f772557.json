@@ -1,0 +1,15 @@
+{
+  "id": "777cb099-dc4a-4572-91ac-ae6f7f772557",
+  "name": "Bob Smith",
+  "email": "bob@example.com",
+  "preference_profile": {
+    "user_id": "777cb099-dc4a-4572-91ac-ae6f7f772557",
+    "activity_preferences": {},
+    "budget_max": null,
+    "location_preferences": [],
+    "dietary_restrictions": [],
+    "accessibility_needs": [],
+    "updated_at": "2025-11-19T11:04:18.388516"
+  },
+  "availability_windows": []
+}

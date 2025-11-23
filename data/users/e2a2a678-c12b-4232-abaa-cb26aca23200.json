@@ -1,0 +1,15 @@
+{
+  "id": "e2a2a678-c12b-4232-abaa-cb26aca23200",
+  "name": "Test User",
+  "email": "test@example.com",
+  "preference_profile": {
+    "user_id": "e2a2a678-c12b-4232-abaa-cb26aca23200",
+    "activity_preferences": {},
+    "budget_max": null,
+    "location_preferences": [],
+    "dietary_restrictions": [],
+    "accessibility_needs": [],
+    "updated_at": "2025-11-19T11:04:41.084831"
+  },
+  "availability_windows": []
+}
