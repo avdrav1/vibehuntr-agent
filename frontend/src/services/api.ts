@@ -4,10 +4,21 @@
  * Provides functions to interact with the FastAPI backend.
  * Handles all HTTP requests and error handling for API endpoints.
  * 
- * Requirements: 4.1, 4.2, 4.3, 4.4, 4.5
+ * Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 3.1, 8.1
  */
 
-import type { Message, ChatRequest, ChatResponse, SessionResponse, MessagesResponse } from '../types';
+import type { 
+  Message, 
+  ChatRequest, 
+  ChatResponse, 
+  SessionResponse, 
+  MessagesResponse
+} from '../types';
+import type {
+  LinkPreviewRequest,
+  LinkPreviewResponse,
+  LinkMetadata
+} from '../types/linkPreview';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
@@ -367,6 +378,50 @@ export async function clearContextItem(
     }
     throw new APIError(
       error instanceof Error ? error.message : 'Unable to clear context item. Please try again.'
+    );
+  }
+}
+
+/**
+ * Fetch link preview metadata for one or more URLs
+ * 
+ * POST /api/link-preview
+ * Requirements: 3.1, 8.1
+ * 
+ * @param urls - Array of URLs to fetch metadata for
+ * @param sessionId - Session ID for potential caching
+ * @returns Array of LinkMetadata objects
+ */
+export async function fetchLinkPreviews(
+  urls: string[],
+  sessionId: string
+): Promise<LinkMetadata[]> {
+  try {
+    const request: LinkPreviewRequest = {
+      urls,
+      session_id: sessionId,
+    };
+
+    const response = await fetch(`${API_BASE_URL}/api/link-preview`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    });
+
+    const data = await handleResponse<LinkPreviewResponse>(response);
+    return data.previews;
+  } catch (error) {
+    if (error instanceof APIError) {
+      throw error;
+    }
+    // Handle network errors with user-friendly messages (Requirement 8.1)
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new APIError('Network error: Unable to load link previews. Please check your connection.');
+    }
+    throw new APIError(
+      error instanceof Error ? error.message : 'Unable to load link previews. Please try again.'
     );
   }
 }

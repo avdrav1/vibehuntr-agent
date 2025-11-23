@@ -130,12 +130,12 @@
 - [x] 6. Checkpoint - Ensure backend tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 7. Create frontend URL extraction utility
+- [x] 7. Create frontend URL extraction utility
   - Implement URL detection and validation
   - Add exclusion logic for venue links and special URLs
   - _Requirements: 1.1, 6.1, 6.2, 6.3, 6.4_
 
-- [ ] 7.1 Create URL extractor utility
+- [x] 7.1 Create URL extractor utility
   - Create `frontend/src/utils/urlExtractor.ts`
   - Implement `extractURLs()` function with regex
   - Implement `isValidURL()` validation
@@ -145,15 +145,15 @@
   - Return array of `ExtractedURL` objects with positions
   - _Requirements: 1.1, 6.1, 6.2, 6.3, 6.4_
 
-- [ ] 7.2 Write property test for URL extraction completeness
+- [x] 7.2 Write property test for URL extraction completeness
   - **Property 1: URL extraction completeness**
   - **Validates: Requirements 1.1, 6.1, 6.2, 6.3, 6.5**
 
-- [ ] 7.3 Write property test for venue link deduplication
+- [x] 7.3 Write property test for venue link deduplication
   - **Property 2: Venue link deduplication**
   - **Validates: Requirements 6.4**
 
-- [ ] 7.4 Write unit tests for URL extractor
+- [x] 7.4 Write unit tests for URL extractor
   - Test single URL extraction
   - Test multiple URL extraction
   - Test no URLs in message
@@ -165,12 +165,12 @@
   - Test venue link pattern exclusion
   - _Requirements: 1.1, 6.1, 6.2, 6.3, 6.4_
 
-- [ ] 8. Create frontend API service for link preview
+- [x] 8. Create frontend API service for link preview
   - Add API client method to fetch metadata
   - Handle errors and timeouts
   - _Requirements: 3.1, 8.1_
 
-- [ ] 8.1 Add link preview API method to frontend service
+- [x] 8.1 Add link preview API method to frontend service
   - Update `frontend/src/services/api.ts`
   - Add `fetchLinkPreviews()` function
   - Call POST `/api/link-preview` with URLs and session_id
@@ -178,18 +178,18 @@
   - Return array of `LinkMetadata` objects
   - _Requirements: 3.1, 8.1_
 
-- [ ] 8.2 Write unit tests for link preview API client
+- [x] 8.2 Write unit tests for link preview API client
   - Test successful API call
   - Test network error handling
   - Test timeout handling
   - Test error response handling
   - _Requirements: 3.1, 8.1_
 
-- [ ] 9. Create frontend type definitions
+- [x] 9. Create frontend type definitions
   - Define TypeScript interfaces for link preview data
   - _Requirements: 3.4_
 
-- [ ] 9.1 Create link preview type definitions
+- [x] 9.1 Create link preview type definitions
   - Create `frontend/src/types/linkPreview.ts`
   - Define `LinkMetadata` interface
   - Define `LinkPreviewRequest` interface
@@ -198,12 +198,12 @@
   - Export all types
   - _Requirements: 3.4_
 
-- [ ] 10. Create PreviewCard UI component
+- [x] 10. Create PreviewCard UI component
   - Implement visual preview card with metadata
   - Handle loading and error states
   - _Requirements: 1.3, 1.4, 2.4, 2.5_
 
-- [ ] 10.1 Create PreviewCard component
+- [x] 10.1 Create PreviewCard component
   - Create `frontend/src/components/PreviewCard.tsx`
   - Accept `metadata` and `loading` props
   - Render card with title, description, image, favicon, domain
@@ -214,15 +214,15 @@
   - Style with Tailwind CSS matching Vibehuntr theme
   - _Requirements: 1.3, 1.4, 2.4, 2.5, 7.1, 7.4_
 
-- [ ] 10.2 Write property test for preview card rendering
+- [x] 10.2 Write property test for preview card rendering
   - **Property 4: Preview card rendering with metadata**
   - **Validates: Requirements 1.3**
 
-- [ ] 10.3 Write property test for image fallback handling
+- [x] 10.3 Write property test for image fallback handling
   - **Property 7: Image fallback handling**
   - **Validates: Requirements 2.4, 5.5**
 
-- [ ] 10.4 Write unit tests for PreviewCard component
+- [x] 10.4 Write unit tests for PreviewCard component
   - Test render with full metadata
   - Test render with partial metadata (no image)
   - Test render with loading state

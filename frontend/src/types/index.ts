@@ -111,3 +111,13 @@ export interface ContextResponse {
   event_party_size?: number;
   recent_venues: VenueInfo[];
 }
+
+/**
+ * Link preview types - re-exported from linkPreview.ts for convenience
+ */
+export type {
+  LinkMetadata,
+  LinkPreviewRequest,
+  LinkPreviewResponse,
+  ExtractedURL
+} from './linkPreview';
