@@ -39,7 +39,7 @@ Vibehuntr uses a modern web architecture with clear separation of concerns:
 ```
 
 **Key Benefits:**
-- ✅ **No duplicate messages** - React's explicit state management prevents UI issues
+- ✅ **No duplicate messages** - Multi-layered duplication prevention with comprehensive monitoring
 - ✅ **Real-time streaming** - Server-Sent Events provide smooth token-by-token responses
 - ✅ **Production-ready** - Standard web architecture suitable for Cloud Run + Cloud Storage deployment
 - ✅ **Better UX** - Responsive UI with fine-grained control over rendering
@@ -103,6 +103,7 @@ vibehuntr-agent/
 - **Document Retrieval**: RAG-powered answers from indexed documents
 - **Conversational AI**: Natural language understanding with Gemini 2.0 Flash
 - **Context Retention**: Maintains conversation context across multiple turns
+- **Duplication Prevention**: Multi-layered defense system ensures unique responses with comprehensive monitoring
 
 ## Screenshots
 
@@ -293,6 +294,7 @@ The project includes a `GEMINI.md` file that provides context for AI tools like 
 - **[Link Preview Cards](.kiro/specs/link-preview-cards/README.md)** - Comprehensive guide to the link preview feature including configuration, troubleshooting, and API reference
 - **[Venue Links Feature](frontend/VENUE_LINKS_FEATURE.md)** - Documentation for the venue links integration with Google Places
 - **[Error Handling Demo](frontend/ERROR_HANDLING_DEMO.md)** - Error handling patterns and examples
+- **[Response Duplication Prevention](.kiro/specs/response-duplication-fix/README.md)** - Complete documentation for the multi-layered duplication prevention system including monitoring, troubleshooting, and configuration
 
 ### Deployment Guides
 
@@ -365,7 +367,7 @@ See [QUICK_DEPLOY.md](QUICK_DEPLOY.md) for the complete 5-minute guide.
 - **Deployment Scripts**:
   - `scripts/deploy-production.sh` - Automated deployment
   - Backend: Cloud Run (auto-scaling, serverless)
-  - Frontend: Cloud Storage (static hosting, CDN-ready)
+  - Frontend: Firebase Hosting (static hosting with global CDN)
 
 #### Infrastructure (Terraform)
 
@@ -377,3 +379,29 @@ For advanced infrastructure setup, see [deployment/README.md](deployment/README.
 ) template for visualizing events being logged in BigQuery. See the "Setup Instructions" tab to getting started.
 
 The application uses OpenTelemetry for comprehensive observability with all events being sent to Google Cloud Trace and Logging for monitoring and to BigQuery for long term storage.
+
+### Response Duplication Monitoring
+
+The system includes comprehensive monitoring for response duplication prevention:
+
+**Key Metrics:**
+- **Duplication Rate**: Percentage of responses with duplicates (target: 0%)
+- **Duplicates by Source**: Tracks whether duplication occurs at AGENT, RUNNER, STREAMING, or SESSION level
+- **Duplicates by Stage**: Identifies exact pipeline stage where duplication occurs
+- **Resolution Rate**: Tracks how often duplication is successfully prevented
+
+**Log Queries:**
+
+```bash
+# Check for duplication warnings (should be absent in production)
+gcloud logging read "resource.type=cloud_run_revision AND jsonPayload.message=~'duplicate'" --limit 50
+
+# Verify clean responses
+gcloud logging read "resource.type=cloud_run_revision AND jsonPayload.message=~'Clean response'" --limit 10
+```
+
+**Alert Thresholds:**
+- **Warning**: Duplication rate > 10% for a session
+- **Critical**: Duplication rate > 25% globally
+
+For complete documentation on duplication prevention, monitoring, and troubleshooting, see [Response Duplication Prevention](.kiro/specs/response-duplication-fix/README.md).

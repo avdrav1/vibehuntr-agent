@@ -117,6 +117,11 @@ class SessionManager:
     def add_message(self, role: str, content: str) -> None:
         """Add a message to chat history in Streamlit session state.
         
+        This method includes duplicate prevention: if the last message in the
+        history has the same role and content, the new message will not be added.
+        This prevents accidental duplicate storage while still allowing legitimate
+        repeated messages (e.g., user sends "hello" twice in different turns).
+        
         Args:
             role: Message role, typically "user" or "assistant"
             content: Message content/text
@@ -128,14 +133,33 @@ class SessionManager:
         if "messages" not in self.session_state:
             self.session_state["messages"] = []
         
+        # Duplicate prevention: Check if the last message is identical
+        # This prevents accidental duplicate storage from bugs in the calling code
+        if self.session_state["messages"]:
+            last_message = self.session_state["messages"][-1]
+            if last_message["role"] == role and last_message["content"] == content:
+                # This is a duplicate of the last message - skip adding it
+                session_id = self.session_state.get("adk_session_id", "unknown")
+                logger.warning(
+                    f"Prevented duplicate message storage in session {session_id}: "
+                    f"role={role}, content_length={len(content)}"
+                )
+                return
+        
         message = {"role": role, "content": content}
         self.session_state["messages"].append(message)
-        logger.debug(
-            f"Added {role} message to Streamlit state (total: {len(self.session_state['messages'])})",
+        
+        # Enhanced logging for session history updates
+        session_id = self.session_state.get("adk_session_id", "unknown")
+        logger.info(
+            f"Session history updated - {role} message added",
             extra={
                 "timestamp": datetime.now().isoformat(),
+                "session_id": session_id,
                 "role": role,
-                "content_length": len(content) if isinstance(content, str) else 0
+                "content_length": len(content) if isinstance(content, str) else 0,
+                "total_messages": len(self.session_state['messages']),
+                "message_index": len(self.session_state['messages']) - 1
             }
         )
     

@@ -15,7 +15,6 @@ NC='\033[0m' # No Color
 PROJECT_ID="${GCP_PROJECT_ID:-}"
 REGION="${GCP_REGION:-us-central1}"
 BACKEND_SERVICE="vibehuntr-backend"
-FRONTEND_BUCKET="${PROJECT_ID}-vibehuntr-frontend"
 
 # Functions
 print_info() {
@@ -28,6 +27,35 @@ print_warning() {
 
 print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
+}
+
+check_firebase_cli() {
+    if ! command -v firebase &> /dev/null; then
+        print_error "Firebase CLI is not installed"
+        print_info "Install with: npm install -g firebase-tools"
+        exit 1
+    fi
+}
+
+check_firebase_auth() {
+    if ! firebase projects:list &> /dev/null; then
+        print_error "Not authenticated with Firebase"
+        print_info "Run: firebase login"
+        exit 1
+    fi
+}
+
+check_firebase_project() {
+    print_info "Checking Firebase project..."
+    
+    if ! firebase projects:list 2>/dev/null | grep -q "${PROJECT_ID}"; then
+        print_error "Firebase project '${PROJECT_ID}' not found or not accessible"
+        print_info "Available projects:"
+        firebase projects:list 2>/dev/null || true
+        exit 1
+    fi
+    
+    print_info "Firebase project '${PROJECT_ID}' verified"
 }
 
 check_prerequisites() {
@@ -51,6 +79,17 @@ check_prerequisites() {
         exit 1
     fi
     
+    # Check if npm is installed
+    if ! command -v npm &> /dev/null; then
+        print_error "npm is not installed. Please install Node.js and npm first."
+        exit 1
+    fi
+    
+    # Check Firebase CLI
+    check_firebase_cli
+    check_firebase_auth
+    check_firebase_project
+    
     print_info "Prerequisites check passed"
 }
 
@@ -73,13 +112,17 @@ deploy_backend() {
     
     cd backend
     
+    # Construct Firebase Hosting URLs for CORS
+    # Requirements: 1.3 (Firebase Hosting Migration)
+    FIREBASE_CORS_ORIGINS="https://${PROJECT_ID}.web.app,https://${PROJECT_ID}.firebaseapp.com"
+    
     # Deploy to Cloud Run
     gcloud run deploy "${BACKEND_SERVICE}" \
         --source . \
         --platform managed \
         --region "${REGION}" \
         --allow-unauthenticated \
-        --set-env-vars PROJECT_ID="${PROJECT_ID}",LOCATION="${REGION}",ENVIRONMENT=production \
+        --set-env-vars PROJECT_ID="${PROJECT_ID}",LOCATION="${REGION}",ENVIRONMENT=production,FIREBASE_PROJECT_ID="${PROJECT_ID}",CORS_ORIGINS="${FIREBASE_CORS_ORIGINS}" \
         --set-secrets GEMINI_API_KEY=GEMINI_API_KEY:latest,GOOGLE_PLACES_API_KEY=GOOGLE_PLACES_API_KEY:latest \
         --memory 2Gi \
         --cpu 2 \
@@ -96,6 +139,9 @@ deploy_backend() {
         --project="${PROJECT_ID}")
     
     print_info "Backend deployed successfully at: ${BACKEND_URL}"
+    print_info "CORS configured for Firebase Hosting URLs:"
+    print_info "  - https://${PROJECT_ID}.web.app"
+    print_info "  - https://${PROJECT_ID}.firebaseapp.com"
     
     cd ..
     
@@ -104,15 +150,7 @@ deploy_backend() {
 }
 
 deploy_frontend() {
-    print_info "Deploying frontend to Cloud Storage..."
-    
-    # Check if bucket exists, create if not
-    if ! gsutil ls -b "gs://${FRONTEND_BUCKET}" &> /dev/null; then
-        print_info "Creating Cloud Storage bucket..."
-        gsutil mb -p "${PROJECT_ID}" -c STANDARD -l "${REGION}" "gs://${FRONTEND_BUCKET}"
-        gsutil iam ch allUsers:objectViewer "gs://${FRONTEND_BUCKET}"
-        gsutil web set -m index.html -e index.html "gs://${FRONTEND_BUCKET}"
-    fi
+    print_info "Deploying frontend to Firebase Hosting..."
     
     cd frontend
     
@@ -124,19 +162,77 @@ deploy_frontend() {
     print_info "Building frontend..."
     npm run build
     
-    # Deploy to Cloud Storage
-    print_info "Uploading to Cloud Storage..."
-    gsutil -m rsync -r -d dist/ "gs://${FRONTEND_BUCKET}"
+    # Deploy to Firebase Hosting
+    print_info "Deploying to Firebase Hosting..."
+    firebase deploy \
+        --only hosting \
+        --project "${PROJECT_ID}" \
+        --non-interactive
     
-    # Set cache control headers
-    gsutil -m setmeta -h "Cache-Control:public, max-age=31536000" "gs://${FRONTEND_BUCKET}/**/*.js" || true
-    gsutil -m setmeta -h "Cache-Control:public, max-age=31536000" "gs://${FRONTEND_BUCKET}/**/*.css" || true
-    gsutil -m setmeta -h "Cache-Control:public, max-age=3600" "gs://${FRONTEND_BUCKET}/index.html" || true
+    # Construct Firebase Hosting URL
+    FRONTEND_URL="https://${PROJECT_ID}.web.app"
     
     print_info "Frontend deployed successfully"
-    print_info "Frontend URL: https://storage.googleapis.com/${FRONTEND_BUCKET}/index.html"
+    print_info "Frontend URL: ${FRONTEND_URL}"
     
     cd ..
+    
+    # Export for verification
+    export FRONTEND_URL
+}
+
+check_frontend_health() {
+    local frontend_url="$1"
+    local temp_file=$(mktemp)
+    
+    print_info "Checking frontend health at ${frontend_url}..."
+    
+    # Make request and capture headers
+    if curl -s -o /dev/null -w "%{http_code}" -D "${temp_file}" "${frontend_url}" > /tmp/status_code.txt 2>&1; then
+        local status_code=$(cat /tmp/status_code.txt)
+        
+        # Check if index.html is accessible with 200 status
+        if [ "${status_code}" = "200" ]; then
+            print_info "✓ Frontend is accessible (HTTP ${status_code})"
+            
+            # Extract and validate cache headers
+            if grep -qi "cache-control" "${temp_file}"; then
+                local cache_header=$(grep -i "cache-control" "${temp_file}" | cut -d: -f2- | tr -d '\r')
+                print_info "  Cache-Control:${cache_header}"
+                
+                # Validate cache headers contain expected values
+                if echo "${cache_header}" | grep -qi "public"; then
+                    print_info "  ✓ Cache headers are configured"
+                else
+                    print_warning "  Cache headers may not be optimal"
+                fi
+            else
+                print_warning "  Cache-Control header not found"
+            fi
+            
+            rm -f "${temp_file}" /tmp/status_code.txt
+            return 0
+        else
+            print_error "✗ Frontend returned HTTP ${status_code}"
+            print_info "Diagnostic Information:"
+            print_info "  - URL: ${frontend_url}"
+            print_info "  - Status: ${status_code}"
+            print_info "  - Verify Firebase deployment completed successfully"
+            print_info "  - Check Firebase Hosting configuration"
+            rm -f "${temp_file}" /tmp/status_code.txt
+            return 1
+        fi
+    else
+        print_error "✗ Frontend health check failed"
+        print_info "Diagnostic Information:"
+        print_info "  - URL: ${frontend_url}"
+        print_info "  - Error: Connection failed or timeout"
+        print_info "  - Verify Firebase deployment completed successfully"
+        print_info "  - Check Firebase Hosting configuration"
+        print_info "  - Ensure DNS records are properly configured"
+        rm -f "${temp_file}" /tmp/status_code.txt
+        return 1
+    fi
 }
 
 verify_deployment() {
@@ -144,16 +240,16 @@ verify_deployment() {
     
     # Check backend health
     if curl -f "${VITE_API_URL}/health" &> /dev/null; then
-        print_info "Backend health check passed"
+        print_info "✓ Backend health check passed"
     else
-        print_warning "Backend health check failed"
+        print_warning "✗ Backend health check failed"
     fi
     
-    # Check frontend
-    if curl -f "https://storage.googleapis.com/${FRONTEND_BUCKET}/index.html" &> /dev/null; then
-        print_info "Frontend is accessible"
+    # Check frontend with detailed health check
+    if check_frontend_health "${FRONTEND_URL}"; then
+        print_info "✓ Frontend health check passed"
     else
-        print_warning "Frontend is not accessible"
+        print_warning "✗ Frontend health check failed (see diagnostic info above)"
     fi
 }
 
@@ -164,14 +260,20 @@ print_summary() {
     echo "=========================================="
     echo "Project ID: ${PROJECT_ID}"
     echo "Region: ${REGION}"
+    echo ""
     echo "Backend URL: ${VITE_API_URL}"
-    echo "Frontend URL: https://storage.googleapis.com/${FRONTEND_BUCKET}/index.html"
+    echo "CORS Origins: Configured for Firebase Hosting"
+    echo "  ✓ https://${PROJECT_ID}.web.app"
+    echo "  ✓ https://${PROJECT_ID}.firebaseapp.com"
+    echo ""
+    echo -e "${GREEN}Frontend URL: ${FRONTEND_URL}${NC}"
+    echo "Alternative URL: https://${PROJECT_ID}.firebaseapp.com"
     echo ""
     echo "Next steps:"
-    echo "1. Configure a custom domain (optional)"
-    echo "2. Set up Cloud CDN for better performance"
-    echo "3. Configure monitoring and alerts"
-    echo "4. Update CORS_ORIGINS on backend if using custom domain"
+    echo "1. Visit ${FRONTEND_URL} to verify the application"
+    echo "2. Test API communication from frontend to backend"
+    echo "3. Configure a custom domain (optional)"
+    echo "4. Configure monitoring and alerts"
     echo "=========================================="
 }
 

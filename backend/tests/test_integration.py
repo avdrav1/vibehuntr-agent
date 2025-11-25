@@ -11,8 +11,8 @@ import json
 from fastapi.testclient import TestClient
 from unittest.mock import patch, MagicMock, AsyncMock
 
-from backend.app.main import app
-from backend.app.services.session_manager import session_manager
+from app.main import app
+from app.services.session_manager import session_manager
 
 
 @pytest.fixture
@@ -522,7 +522,7 @@ class TestErrorHandlingIntegration:
         
         # Mock agent service to raise error
         with patch('backend.app.api.chat.get_agent_service') as mock:
-            from backend.app.services.agent_service import AgentInvocationError
+            from app.services.agent_service import AgentInvocationError
             
             service = MagicMock()
             

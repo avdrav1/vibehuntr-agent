@@ -84,12 +84,30 @@ rollback_backend() {
 }
 
 rollback_frontend() {
-    print_warning "Frontend rollback requires manual restoration from backup"
-    print_info "To rollback frontend:"
-    echo "1. Locate your previous build in frontend/dist.backup/"
-    echo "2. Run: gsutil -m rsync -r -d frontend/dist.backup/ gs://\${FRONTEND_BUCKET}"
+    print_info "Rolling back frontend deployment..."
+    
+    # List recent Firebase Hosting releases
+    print_info "Recent Firebase Hosting releases:"
+    firebase hosting:releases:list --project "${PROJECT_ID}" 2>/dev/null || {
+        print_error "Failed to list Firebase releases. Ensure Firebase CLI is authenticated."
+        return 1
+    }
+    
     echo ""
-    print_info "Or restore from a specific date using gsutil versioning"
+    print_warning "Firebase Hosting maintains deployment history automatically"
+    print_info "To rollback frontend:"
+    echo "1. Run: firebase hosting:rollback --project ${PROJECT_ID}"
+    echo "2. Or deploy a specific version from your git history"
+    echo ""
+    
+    read -p "Would you like to rollback to the previous version now? (yes/no): " CONFIRM
+    
+    if [ "$CONFIRM" = "yes" ]; then
+        firebase hosting:rollback --project "${PROJECT_ID}"
+        print_info "Frontend rolled back successfully"
+    else
+        print_info "Rollback cancelled"
+    fi
 }
 
 show_menu() {

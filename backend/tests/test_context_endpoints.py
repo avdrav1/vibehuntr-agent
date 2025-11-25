@@ -10,7 +10,7 @@ project_root = Path(__file__).resolve().parent.parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-from backend.app.main import app
+from app.main import app
 
 # Import context_manager after conftest has set it up
 import app.event_planning.context_manager as context_manager_module

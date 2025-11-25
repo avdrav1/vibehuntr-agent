@@ -15,7 +15,7 @@ parent_dir = Path(__file__).resolve().parent.parent.parent
 if str(parent_dir) not in sys.path:
     sys.path.insert(0, str(parent_dir))
 
-from backend.app.services.agent_service import (
+from app.services.agent_service import (
     AgentService,
     get_agent_service,
     AgentInvocationError

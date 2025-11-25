@@ -1,8 +1,8 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { render, cleanup } from '@testing-library/react';
 import fc from 'fast-check';
 import { PreviewCard } from './PreviewCard';
-import type { LinkMetadata } from '../types/linkPreview';
+// LinkMetadata type available but not used in this test file
 
 /**
  * Property-based tests for PreviewCard component

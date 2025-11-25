@@ -1,0 +1,14 @@
+{
+  "projects": {
+    "default": "adk-experiments-478415"
+  },
+  "targets": {
+    "adk-experiments-478415": {
+      "hosting": {
+        "vibehuntr": [
+          "vibehuntr"
+        ]
+      }
+    }
+  }
+}

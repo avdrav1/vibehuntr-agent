@@ -11,7 +11,7 @@
 The agent needs Google Cloud credentials to work. Choose one option:
 
 ### Option 1: Use Gemini API Key (Easiest)
-
+4/0Ab32j902rzLO6-tMza9YP7nL9VRQy6jekzFbwki15AQ0ZccKUIA9-pBshAIY4kVZ3dQXyg
 1. **Get an API key**: Visit https://makersuite.google.com/app/apikey
 2. **Add to `.env` file**:
    ```bash

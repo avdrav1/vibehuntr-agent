@@ -58,10 +58,10 @@ The Vibehuntr agent application is **production-ready** with comprehensive testi
   - Health checks configured
   - Secrets management via Secret Manager
   
-- **Cloud Storage Frontend**: Static hosting configured
-  - Public access configured
+- **Firebase Hosting Frontend**: Static hosting configured
+  - Global CDN included
   - Cache headers optimized
-  - CDN-ready
+  - Automatic SSL certificates
   
 - **Automated Deployment**: Script ready (`scripts/deploy-production.sh`)
   - One-command deployment

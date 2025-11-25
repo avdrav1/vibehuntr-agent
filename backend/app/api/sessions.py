@@ -12,12 +12,12 @@ import logging
 import uuid
 from fastapi import APIRouter, HTTPException, Path
 
-from backend.app.models.schemas import (
+from app.models.schemas import (
     SessionResponse,
     MessagesResponse,
     ErrorResponse,
 )
-from backend.app.services.session_manager import session_manager
+from app.services.session_manager import session_manager
 
 
 # Configure logging

@@ -1,7 +1,7 @@
 """Tests for session manager service."""
 
 import pytest
-from backend.app.services.session_manager import SessionManager, Message
+from app.services.session_manager import SessionManager, Message
 
 
 def test_create_session():

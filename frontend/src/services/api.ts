@@ -349,7 +349,7 @@ export async function clearContext(sessionId: string): Promise<void> {
  */
 export async function clearContextItem(
   sessionId: string,
-  itemType: 'location' | 'query' | 'venue',
+  itemType: 'location' | 'query' | 'venue' | 'user_name' | 'user_email',
   index?: number
 ): Promise<void> {
   try {

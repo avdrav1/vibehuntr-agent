@@ -386,11 +386,11 @@ gcloud run deploy vibehuntr-backend \
 cd frontend
 npm run build
 
-# Upload to Cloud Storage
-gsutil -m rsync -r dist/ gs://your-bucket-name/
+# Deploy to Firebase Hosting
+firebase deploy --only hosting --project your-project-id
 
-# Configure CDN
-# See deployment/README.md for details
+# Or for local testing with Firebase emulator
+firebase emulators:start --only hosting
 ```
 
 ## Additional Resources

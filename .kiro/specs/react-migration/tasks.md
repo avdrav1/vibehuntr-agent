@@ -178,7 +178,7 @@ am3
 - [x] 27. Write backend unit tests
   - Test session_manager methods
   - Test API endpoints
-  - Test error handling
+  - Test error handlinghttp://127.0.0.1:5173/
   - _Requirements: 12.1, 12.4_
 
 - [x] 28. Write frontend component tests

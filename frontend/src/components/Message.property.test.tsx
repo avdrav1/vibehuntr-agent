@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import fc from 'fast-check';
 import { Message } from './Message';
 import type { Message as MessageType } from '../types';
@@ -180,7 +180,7 @@ ${validUrls.join('\n')}
             );
             
             // Check if venue link was rendered (it might not be if the pattern doesn't match)
-            const venueButton = screen.queryByText(`Visit ${venueName}`);
+            // Note: venue button rendering is checked implicitly by the preview exclusion logic
             
             // If venue button is rendered, the venue URL should be excluded from previews
             // If not rendered, the venue URL might appear in previews

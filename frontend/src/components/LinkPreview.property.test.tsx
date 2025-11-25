@@ -3,7 +3,7 @@ import { render, waitFor, cleanup } from '@testing-library/react';
 import fc from 'fast-check';
 import { LinkPreview } from './LinkPreview';
 import * as api from '../services/api';
-import type { LinkMetadata } from '../types/linkPreview';
+// LinkMetadata type available but not used in this test file
 
 /**
  * Property-based tests for LinkPreview component

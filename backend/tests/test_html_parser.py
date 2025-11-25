@@ -7,7 +7,7 @@ Requirements: 3.3, 5.4
 """
 
 import pytest
-from backend.app.services.html_parser import HTMLParser
+from app.services.html_parser import HTMLParser
 
 
 class TestHTMLParser:

@@ -21,7 +21,15 @@ describe('Frontend Performance Tests', () => {
       close: vi.fn(),
       onerror: null,
       onmessage: null,
-    }));
+      onopen: null,
+      readyState: 0,
+      url: '',
+      withCredentials: false,
+      CONNECTING: 0,
+      OPEN: 1,
+      CLOSED: 2,
+      dispatchEvent: vi.fn(),
+    })) as any;
   });
 
   it('handles long conversation (100+ messages) efficiently', async () => {

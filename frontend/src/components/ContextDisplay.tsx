@@ -26,7 +26,7 @@ interface ContextDisplayProps {
  * Requirement 11.6: Ability to clear individual context items or all context
  * Requirement 11.7: Visual design consistent with Vibehuntr theme
  */
-export function ContextDisplay({ sessionId, context, onContextUpdate, refreshTrigger }: ContextDisplayProps) {
+export function ContextDisplay({ sessionId, context, onContextUpdate }: ContextDisplayProps) {
   const [localContext, setLocalContext] = useState<ConversationContext | null>(context);
   const [error, setError] = useState<string | null>(null);
 

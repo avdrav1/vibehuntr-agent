@@ -41,8 +41,12 @@ class Settings(BaseSettings):
     debug: bool = True
     
     # CORS configuration
-    # Requirements: 5.1, 5.2, 5.3, 5.4, 5.5
+    # Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 1.3 (Firebase Hosting)
     cors_origins: str = "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://127.0.0.1:3000"
+    
+    # Firebase Hosting configuration
+    # Requirements: 1.3 (Firebase Hosting Migration)
+    firebase_project_id: str = ""
     
     # API Keys
     google_api_key: str = ""
@@ -75,21 +79,34 @@ class Settings(BaseSettings):
         Returns:
             List of allowed CORS origin URLs
             
-        Requirements: 5.1, 5.2, 5.5
+        Requirements: 5.1, 5.2, 5.5, 1.3 (Firebase Hosting)
         """
+        origins = []
+        
         if self.environment == "production":
             # In production, parse from environment variable
             # Should be comma-separated list of production domains
-            origins = [origin.strip() for origin in self.cors_origins.split(",")]
-            return [origin for origin in origins if origin]
+            env_origins = [origin.strip() for origin in self.cors_origins.split(",")]
+            origins.extend([origin for origin in env_origins if origin])
+            
+            # Add Firebase Hosting URLs if project ID is configured
+            # Requirements: 1.3 (Firebase Hosting Migration)
+            if self.firebase_project_id:
+                firebase_origins = [
+                    f"https://{self.firebase_project_id}.web.app",
+                    f"https://{self.firebase_project_id}.firebaseapp.com",
+                ]
+                origins.extend(firebase_origins)
         else:
             # In development, allow localhost ports
-            return [
+            origins = [
                 "http://localhost:5173",  # Vite default
                 "http://localhost:3000",  # Alternative React port
                 "http://127.0.0.1:5173",
                 "http://127.0.0.1:3000",
             ]
+        
+        return origins
     
     @property
     def is_production(self) -> bool:

@@ -33,7 +33,8 @@ This feature adds embedded link preview cards to chat messages. When the agent i
 
 #### Acceptance Criteria
 
-1. WHEN a link preview card is displayed THEN the card SHALL use the Vibehuntr color scheme with gradient accents
+1. WHEN a linkparty of 5 for indian food in South Philly tomorrow at 8pm
+ preview card is displayed THEN the card SHALL use the Vibehuntr color scheme with gradient accents
 2. WHEN a user hovers over a preview card THEN the card SHALL show a subtle animation or highlight effect
 3. WHEN a preview image is available THEN the image SHALL be displayed with appropriate aspect ratio and rounded corners
 4. WHEN no preview image is available THEN the card SHALL display a fallback icon or gradient background

@@ -15,7 +15,7 @@ parent_dir = Path(__file__).resolve().parent.parent.parent
 if str(parent_dir) not in sys.path:
     sys.path.insert(0, str(parent_dir))
 
-from backend.app.services.metadata_fetcher import MetadataFetcher, FetchError
+from app.services.metadata_fetcher import MetadataFetcher, FetchError
 
 
 @pytest.fixture

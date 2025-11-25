@@ -99,3 +99,93 @@ def test_get_settings_cached():
     
     # Should be the same instance due to lru_cache
     assert settings1 is settings2
+
+
+def test_firebase_cors_origins_production():
+    """
+    Test that Firebase Hosting URLs are added to CORS origins in production.
+    
+    Requirements: 1.3 (Firebase Hosting Migration)
+    """
+    from backend.app.core.config import Settings
+    
+    settings = Settings(
+        environment="production",
+        firebase_project_id="test-project-123",
+        cors_origins="https://custom-domain.com"
+    )
+    origins = settings.get_cors_origins()
+    
+    # Should include custom domain
+    assert "https://custom-domain.com" in origins
+    
+    # Should include Firebase Hosting URLs
+    assert "https://test-project-123.web.app" in origins
+    assert "https://test-project-123.firebaseapp.com" in origins
+    
+    # Should have 3 origins total
+    assert len(origins) == 3
+
+
+def test_firebase_cors_origins_no_project_id():
+    """
+    Test that Firebase URLs are not added when project ID is not set.
+    
+    Requirements: 1.3 (Firebase Hosting Migration)
+    """
+    from backend.app.core.config import Settings
+    
+    settings = Settings(
+        environment="production",
+        firebase_project_id="",
+        cors_origins="https://custom-domain.com"
+    )
+    origins = settings.get_cors_origins()
+    
+    # Should only include custom domain
+    assert "https://custom-domain.com" in origins
+    assert len(origins) == 1
+
+
+def test_firebase_cors_origins_development():
+    """
+    Test that Firebase URLs are not added in development mode.
+    
+    Requirements: 1.3 (Firebase Hosting Migration)
+    """
+    from backend.app.core.config import Settings
+    
+    settings = Settings(
+        environment="development",
+        firebase_project_id="test-project-123"
+    )
+    origins = settings.get_cors_origins()
+    
+    # Should only include localhost origins
+    assert "http://localhost:5173" in origins
+    assert "http://localhost:3000" in origins
+    
+    # Should NOT include Firebase URLs in development
+    assert "https://test-project-123.web.app" not in origins
+    assert "https://test-project-123.firebaseapp.com" not in origins
+
+
+def test_firebase_cors_both_domains():
+    """
+    Test that both .web.app and .firebaseapp.com domains are included.
+    
+    Requirements: 1.3 (Firebase Hosting Migration)
+    """
+    from backend.app.core.config import Settings
+    
+    settings = Settings(
+        environment="production",
+        firebase_project_id="my-app",
+        cors_origins=""
+    )
+    origins = settings.get_cors_origins()
+    
+    # Both Firebase domains should be present
+    assert "https://my-app.web.app" in origins
+    assert "https://my-app.firebaseapp.com" in origins
+    assert len(origins) == 2

@@ -11,8 +11,8 @@ from fastapi.testclient import TestClient
 from unittest.mock import patch, MagicMock
 import logging
 
-from backend.app.main import app
-from backend.app.services.session_manager import SessionManager
+from app.main import app
+from app.services.session_manager import SessionManager
 
 
 @pytest.fixture

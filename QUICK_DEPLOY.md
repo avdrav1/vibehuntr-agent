@@ -8,13 +8,19 @@ Get your Vibehuntr agent running in production in 5 minutes.
    - [Gemini API Key](https://makersuite.google.com/app/apikey) - Get your Gemini API key from Google AI Studio
    - [Google Places API Key](https://console.cloud.google.com/apis/credentials) - Create a Places API key in GCP Console
 
-2. **Install gcloud** (if not installed):
+2. **Install Required Tools** (if not installed):
    ```bash
+   # gcloud CLI
    curl https://sdk.cloud.google.com | bash
    exec -l $SHELL
+   
+   # Firebase CLI
+   npm install -g firebase-tools
    ```
    
-   Or follow the [official installation guide](https://cloud.google.com/sdk/docs/install)
+   Or follow the official installation guides:
+   - [gcloud CLI Installation](https://cloud.google.com/sdk/docs/install)
+   - [Firebase CLI Installation](https://firebase.google.com/docs/cli)
 
 ## Deploy (3 minutes)
 
@@ -27,8 +33,12 @@ export GCP_PROJECT_ID="your-project-id"
 ### Step 2: Authenticate
 
 ```bash
+# Authenticate with GCP
 gcloud auth login
 gcloud config set project $GCP_PROJECT_ID
+
+# Authenticate with Firebase
+firebase login
 ```
 
 ### Step 3: Create Secrets
@@ -55,7 +65,7 @@ chmod +x scripts/deploy-production.sh
 That's it! The script will:
 - ✅ Enable required GCP APIs
 - ✅ Deploy backend to Cloud Run
-- ✅ Build and deploy frontend to Cloud Storage
+- ✅ Build and deploy frontend to Firebase Hosting
 - ✅ Configure CORS and caching
 - ✅ Verify deployment
 
@@ -64,7 +74,8 @@ That's it! The script will:
 After deployment completes, you'll see:
 
 ```
-Frontend URL: https://storage.googleapis.com/YOUR-PROJECT-vibehuntr-frontend/index.html
+Frontend URL: https://YOUR-PROJECT.web.app
+Alternative URL: https://YOUR-PROJECT.firebaseapp.com
 Backend URL: https://vibehuntr-backend-xxx.run.app
 ```
 
@@ -107,8 +118,11 @@ gcloud run logs read vibehuntr-backend --region us-central1 --limit 50
 
 ### Frontend not loading
 ```bash
-# Verify bucket exists
-gsutil ls gs://$GCP_PROJECT_ID-vibehuntr-frontend
+# Check Firebase Hosting status
+firebase hosting:channel:list --project $GCP_PROJECT_ID
+
+# View deployment history
+firebase hosting:releases:list --project $GCP_PROJECT_ID
 ```
 
 ## Cost Estimate
@@ -116,7 +130,7 @@ gsutil ls gs://$GCP_PROJECT_ID-vibehuntr-frontend
 Expected monthly cost for low-medium traffic: **$10-50**
 
 - Cloud Run: $5-20 (scales to zero)
-- Cloud Storage: $1-5 (static hosting)
+- Firebase Hosting: $0-5 (10GB free tier, then pay per use)
 - Gemini API: Variable (pay per use)
 - Places API: Variable (pay per use)
 

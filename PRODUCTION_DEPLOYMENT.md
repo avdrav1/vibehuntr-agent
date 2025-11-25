@@ -6,9 +6,45 @@ This guide covers deploying the Vibehuntr agent to Google Cloud Platform (GCP) f
 
 The production deployment consists of:
 - **Backend**: FastAPI application on Cloud Run (auto-scaling, serverless)
-- **Frontend**: React SPA hosted on Cloud Storage (static hosting)
+- **Frontend**: React SPA hosted on Firebase Hosting (static hosting with CDN)
 - **Secrets**: API keys stored in Secret Manager
 - **Monitoring**: Cloud Logging, Cloud Trace (OpenTelemetry)
+
+### Architecture Diagram
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                         User Browser                         │
+└────────────────────────┬────────────────────────────────────┘
+                         │ HTTPS
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│              Firebase Hosting (Global CDN)                   │
+│  • Automatic SSL certificates                                │
+│  • SPA routing (all routes → index.html)                     │
+│  • Cache headers (31536000s for assets, 3600s for HTML)     │
+│  • URL: https://project-id.web.app                           │
+└────────────────────────┬────────────────────────────────────┘
+                         │ API Requests
+                         │ (CORS configured)
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   Cloud Run Backend                          │
+│  • FastAPI application                                       │
+│  • Auto-scaling (min: 0, max: 10)                            │
+│  • 2GB memory, 2 vCPU                                        │
+│  • Secrets from Secret Manager                               │
+│  • OpenTelemetry tracing                                     │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+         ┌───────────────┼───────────────┐
+         │               │               │
+         ▼               ▼               ▼
+┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+│   Gemini    │  │   Google    │  │   Secret    │
+│     API     │  │  Places API │  │   Manager   │
+└─────────────┘  └─────────────┘  └─────────────┘
+```
 
 ## Prerequisites
 
@@ -32,6 +68,9 @@ You'll need:
 curl https://sdk.cloud.google.com | bash
 exec -l $SHELL
 
+# Firebase CLI
+npm install -g firebase-tools
+
 # uv (Python package manager)
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
@@ -41,15 +80,97 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 **Installation Links**:
 - [gcloud CLI Installation](https://cloud.google.com/sdk/docs/install)
+- [Firebase CLI Installation](https://firebase.google.com/docs/cli)
 - [uv Installation Guide](https://docs.astral.sh/uv/getting-started/installation/)
 - [Node.js Downloads](https://nodejs.org/)
 
-### 4. Authenticate with GCP
+### 4. Authenticate with GCP and Firebase
 
 ```bash
+# Authenticate with GCP
 gcloud auth login
 gcloud config set project $GCP_PROJECT_ID
 gcloud auth application-default login
+
+# Authenticate with Firebase
+firebase login
+```
+
+### 5. Firebase Project Setup (First Time Only)
+
+If this is your first time deploying to Firebase Hosting, you need to set up the Firebase project:
+
+```bash
+cd frontend
+
+# Option 1: Use existing Firebase configuration (recommended)
+# The repository already includes firebase.json and .firebaserc
+# Just verify the project ID is correct
+cat .firebaserc
+
+# If the project ID is incorrect or missing, update it:
+firebase use $GCP_PROJECT_ID
+
+# Option 2: Initialize Firebase from scratch (only if needed)
+# This will create firebase.json and .firebaserc
+firebase init hosting
+
+# When prompted:
+# - Select "Use an existing project"
+# - Choose your GCP project from the list
+# - Set public directory to: dist
+# - Configure as single-page app: Yes
+# - Set up automatic builds with GitHub: No (we use manual deployment)
+# - Don't overwrite existing files
+
+cd ..
+```
+
+**Verify Firebase Configuration**:
+
+The `frontend/firebase.json` should look like this:
+```json
+{
+  "hosting": {
+    "public": "dist",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ],
+    "headers": [
+      {
+        "source": "**/*.@(js|css|jpg|jpeg|png|gif|svg|webp|woff|woff2|ttf|eot)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
+      },
+      {
+        "source": "index.html",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=3600, must-revalidate"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+The `frontend/.firebaserc` should contain:
+```json
+{
+  "projects": {
+    "default": "your-project-id"
+  }
+}
 ```
 
 ## Quick Deploy (Automated)
@@ -77,7 +198,7 @@ chmod +x scripts/deploy-production.sh
 The script will:
 1. Enable required GCP APIs
 2. Deploy backend to Cloud Run
-3. Build and deploy frontend to Cloud Storage
+3. Build and deploy frontend to Firebase Hosting
 4. Configure CORS and caching
 5. Verify deployment health
 
@@ -90,10 +211,10 @@ If you prefer to deploy manually or need more control:
 ```bash
 gcloud services enable \
   run.googleapis.com \
-  storage.googleapis.com \
   cloudbuild.googleapis.com \
   secretmanager.googleapis.com \
   aiplatform.googleapis.com \
+  firebasehosting.googleapis.com \
   --project=$GCP_PROJECT_ID
 ```
 
@@ -162,11 +283,12 @@ echo "Backend deployed at: $BACKEND_URL"
 
 ### 5. Update Backend CORS Settings
 
-Update `backend/app/core/config.py` to include your production frontend URL in CORS origins, then redeploy:
+The deployment script automatically configures CORS for Firebase Hosting URLs. If you need to add custom domains, update the CORS_ORIGINS environment variable:
 
-```python
-# In production, add your frontend URL
-cors_origins: str = "https://storage.googleapis.com,https://your-custom-domain.com"
+```bash
+gcloud run services update vibehuntr-backend \
+  --region us-central1 \
+  --update-env-vars CORS_ORIGINS="https://$GCP_PROJECT_ID.web.app,https://$GCP_PROJECT_ID.firebaseapp.com,https://your-custom-domain.com"
 ```
 
 ### 6. Build and Deploy Frontend
@@ -181,29 +303,23 @@ export VITE_API_URL=$BACKEND_URL
 npm ci
 npm run build
 
-# Create Cloud Storage bucket (first time only)
-gsutil mb -p $GCP_PROJECT_ID -c STANDARD -l us-central1 gs://$GCP_PROJECT_ID-vibehuntr-frontend
-
-# Make bucket publicly readable
-gsutil iam ch allUsers:objectViewer gs://$GCP_PROJECT_ID-vibehuntr-frontend
-
-# Configure bucket for website hosting
-gsutil web set -m index.html -e index.html gs://$GCP_PROJECT_ID-vibehuntr-frontend
-
-# Upload built files
-gsutil -m rsync -r -d dist/ gs://$GCP_PROJECT_ID-vibehuntr-frontend
-
-# Set cache control headers for optimal performance
-gsutil -m setmeta -h "Cache-Control:public, max-age=31536000, immutable" "gs://$GCP_PROJECT_ID-vibehuntr-frontend/assets/**" || true
-gsutil -m setmeta -h "Cache-Control:public, max-age=3600" "gs://$GCP_PROJECT_ID-vibehuntr-frontend/index.html"
+# Deploy to Firebase Hosting
+firebase deploy --only hosting --project $GCP_PROJECT_ID
 
 cd ..
 ```
 
+**Note**: Firebase Hosting automatically:
+- Serves content via global CDN
+- Provisions SSL certificates
+- Applies cache headers from `firebase.json`
+- Handles SPA routing
+
 ### 7. Access Your Application
 
 ```bash
-echo "Frontend URL: https://storage.googleapis.com/$GCP_PROJECT_ID-vibehuntr-frontend/index.html"
+echo "Frontend URL: https://$GCP_PROJECT_ID.web.app"
+echo "Alternative URL: https://$GCP_PROJECT_ID.firebaseapp.com"
 echo "Backend URL: $BACKEND_URL"
 echo "API Docs: $BACKEND_URL/docs"
 echo "Health Check: $BACKEND_URL/health"
@@ -238,13 +354,13 @@ The backend automatically configures CORS based on the `ENVIRONMENT` variable:
 - **Development**: Allows `localhost:5173`, `localhost:3000`
 - **Production**: Uses `CORS_ORIGINS` environment variable
 
-To add your production frontend URL:
+The deployment script automatically configures CORS for Firebase Hosting URLs. To add custom domains:
 
 ```bash
 # Update Cloud Run service with CORS origins
 gcloud run services update vibehuntr-backend \
   --region us-central1 \
-  --update-env-vars CORS_ORIGINS="https://storage.googleapis.com,https://your-domain.com"
+  --update-env-vars CORS_ORIGINS="https://$GCP_PROJECT_ID.web.app,https://$GCP_PROJECT_ID.firebaseapp.com,https://your-domain.com"
 ```
 
 Or update `backend/app/core/config.py` and redeploy.
@@ -296,65 +412,50 @@ curl -X POST $BACKEND_URL/api/sessions
 
 ## Custom Domain Setup (Optional)
 
-For a custom domain like `vibehuntr.yourdomain.com`:
+Firebase Hosting makes custom domains easy. For a custom domain like `vibehuntr.yourdomain.com`:
 
-### 1. Set up Cloud Load Balancer
-
-```bash
-# Reserve a static IP
-gcloud compute addresses create vibehuntr-ip --global
-
-# Get the IP address
-gcloud compute addresses describe vibehuntr-ip --global --format="value(address)"
-```
-
-### 2. Create SSL Certificate
+### 1. Add Custom Domain in Firebase Console
 
 ```bash
-# Create managed SSL certificate
-gcloud compute ssl-certificates create vibehuntr-cert \
-  --domains=vibehuntr.yourdomain.com \
-  --global
+# Add domain via CLI
+firebase hosting:channel:deploy production \
+  --project $GCP_PROJECT_ID \
+  --expires 30d
+
+# Or use Firebase Console:
+# 1. Go to Firebase Console > Hosting
+# 2. Click "Add custom domain"
+# 3. Enter your domain name
+# 4. Follow verification steps
 ```
 
-### 3. Configure Load Balancer
+### 2. Update DNS Records
 
-```bash
-# Create backend service pointing to Cloud Run
-gcloud compute backend-services create vibehuntr-backend-service \
-  --global
+Firebase will provide DNS records to add to your domain registrar:
 
-# Create URL map
-gcloud compute url-maps create vibehuntr-lb \
-  --default-service vibehuntr-backend-service
-
-# Create HTTPS proxy
-gcloud compute target-https-proxies create vibehuntr-https-proxy \
-  --url-map=vibehuntr-lb \
-  --ssl-certificates=vibehuntr-cert
-
-# Create forwarding rule
-gcloud compute forwarding-rules create vibehuntr-https-rule \
-  --address=vibehuntr-ip \
-  --global \
-  --target-https-proxy=vibehuntr-https-proxy \
-  --ports=443
-```
-
-### 4. Update DNS
-
-Point your domain to the reserved IP address:
+**For apex domain (yourdomain.com)**:
 - Type: A
-- Name: vibehuntr (or @)
-- Value: [IP from step 1]
+- Name: @
+- Value: [IP addresses provided by Firebase]
 
-### 5. Update CORS
+**For subdomain (vibehuntr.yourdomain.com)**:
+- Type: CNAME
+- Name: vibehuntr
+- Value: [hostname provided by Firebase]
+
+### 3. Wait for SSL Provisioning
+
+Firebase automatically provisions SSL certificates (usually takes 24-48 hours).
+
+### 4. Update Backend CORS
 
 ```bash
 gcloud run services update vibehuntr-backend \
   --region us-central1 \
-  --update-env-vars CORS_ORIGINS="https://vibehuntr.yourdomain.com"
+  --update-env-vars CORS_ORIGINS="https://$GCP_PROJECT_ID.web.app,https://vibehuntr.yourdomain.com"
 ```
+
+**Documentation**: [Firebase Custom Domain Setup](https://firebase.google.com/docs/hosting/custom-domain)
 
 ## Cost Optimization
 
@@ -365,10 +466,11 @@ gcloud run services update vibehuntr-backend \
   - ~$0.00002400 per request (2.4¢ per 1000 requests)
   - 2GB memory, 2 vCPU configuration
   
-- **Cloud Storage Frontend**:
-  - ~$0.026 per GB/month storage
-  - ~$0.12 per GB egress (first 1GB free)
-  - Very cheap for static sites
+- **Firebase Hosting Frontend**:
+  - Free tier: 10GB storage, 360MB/day transfer
+  - ~$0.026 per GB/month storage (after free tier)
+  - ~$0.15 per GB egress (after free tier)
+  - Includes global CDN at no extra cost
   
 - **Gemini API**:
   - Pay per token (input + output)
@@ -380,7 +482,7 @@ gcloud run services update vibehuntr-backend \
 
 ### Cost Reduction Tips
 
-1. **Enable Cloud CDN** for frontend (reduces egress costs)
+1. **Firebase Hosting includes CDN** at no extra cost (already configured)
 2. **Set min-instances=0** for Cloud Run (already configured)
 3. **Use Gemini Flash models** instead of Pro (already configured)
 4. **Implement request caching** for Places API
@@ -427,6 +529,7 @@ gcloud run services update-traffic vibehuntr-backend \
 
 ### Gradual Rollout (Canary Deployment)
 
+**Backend (Cloud Run)**:
 ```bash
 # Route 10% to new version, 90% to old
 gcloud run services update-traffic vibehuntr-backend \
@@ -437,6 +540,15 @@ gcloud run services update-traffic vibehuntr-backend \
 gcloud run services update-traffic vibehuntr-backend \
   --to-latest \
   --region us-central1
+```
+
+**Frontend (Firebase Hosting)**:
+```bash
+# Firebase maintains deployment history
+firebase hosting:channel:list --project $GCP_PROJECT_ID
+
+# Rollback to previous version
+firebase hosting:rollback --project $GCP_PROJECT_ID
 ```
 
 ## Security Best Practices
@@ -499,16 +611,189 @@ gcloud run logs read vibehuntr-backend --region us-central1 --limit 100
 ### Frontend Not Loading
 
 ```bash
-# Check if bucket exists and is public
-gsutil ls gs://$GCP_PROJECT_ID-vibehuntr-frontend
+# Check Firebase Hosting status
+firebase hosting:channel:list --project $GCP_PROJECT_ID
 
-# Verify public access
-gsutil iam get gs://$GCP_PROJECT_ID-vibehuntr-frontend
+# View deployment history
+firebase hosting:releases:list --project $GCP_PROJECT_ID
 
 # Check CORS on backend
-curl -H "Origin: https://storage.googleapis.com" \
+curl -H "Origin: https://$GCP_PROJECT_ID.web.app" \
   -H "Access-Control-Request-Method: POST" \
   -X OPTIONS $BACKEND_URL/api/chat -v
+
+# Test frontend directly
+curl https://$GCP_PROJECT_ID.web.app
+```
+
+### Firebase-Specific Issues
+
+#### Firebase CLI Not Authenticated
+
+**Symptom**: `firebase deploy` fails with authentication error
+
+**Solution**:
+```bash
+# Re-authenticate with Firebase
+firebase login --reauth
+
+# Verify authentication
+firebase projects:list
+
+# If using CI/CD, use service account
+export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account-key.json
+firebase deploy --token "$(gcloud auth print-access-token)"
+```
+
+#### Firebase Project Not Found
+
+**Symptom**: Error: "Project not found" or "Permission denied"
+
+**Solution**:
+```bash
+# List available projects
+firebase projects:list
+
+# Set correct project
+firebase use $GCP_PROJECT_ID
+
+# Verify .firebaserc file
+cat frontend/.firebaserc
+
+# If .firebaserc is missing or incorrect, recreate it
+cd frontend
+firebase use --add
+```
+
+#### Build Artifacts Not Found
+
+**Symptom**: Firebase deploy fails with "public directory not found"
+
+**Solution**:
+```bash
+# Ensure build completed successfully
+cd frontend
+npm run build
+
+# Verify dist directory exists
+ls -la dist/
+
+# Check firebase.json points to correct directory
+cat firebase.json | grep public
+
+# Should show: "public": "dist"
+```
+
+#### SPA Routes Return 404
+
+**Symptom**: Direct navigation to routes (e.g., `/about`) returns 404
+
+**Solution**:
+```bash
+# Verify firebase.json has rewrite rules
+cat frontend/firebase.json
+
+# Should include:
+# "rewrites": [
+#   {
+#     "source": "**",
+#     "destination": "/index.html"
+#   }
+# ]
+
+# Redeploy if missing
+firebase deploy --only hosting --project $GCP_PROJECT_ID
+```
+
+#### Cache Headers Not Applied
+
+**Symptom**: Assets not caching properly, slow repeat visits
+
+**Solution**:
+```bash
+# Check cache headers in browser DevTools Network tab
+# Or use curl:
+curl -I https://$GCP_PROJECT_ID.web.app/assets/index-abc123.js
+
+# Should see: Cache-Control: public, max-age=31536000, immutable
+
+# If missing, verify firebase.json headers configuration
+cat frontend/firebase.json | grep -A 20 headers
+
+# Redeploy to apply changes
+firebase deploy --only hosting --project $GCP_PROJECT_ID
+```
+
+#### SSL Certificate Pending
+
+**Symptom**: Custom domain shows "SSL certificate pending"
+
+**Solution**:
+- SSL provisioning can take 24-48 hours
+- Verify DNS records are correctly configured
+- Check Firebase Console > Hosting > Custom domains for status
+- Ensure domain verification is complete
+
+```bash
+# Check domain status
+firebase hosting:channel:list --project $GCP_PROJECT_ID
+
+# View SSL certificate status in Firebase Console
+# https://console.firebase.google.com/project/$GCP_PROJECT_ID/hosting/sites
+```
+
+#### CORS Errors from Frontend
+
+**Symptom**: Browser console shows CORS errors when calling backend API
+
+**Solution**:
+```bash
+# Verify backend CORS configuration includes Firebase URLs
+gcloud run services describe vibehuntr-backend \
+  --region us-central1 \
+  --format="value(spec.template.spec.containers[0].env)" | grep CORS
+
+# Update CORS origins if needed
+gcloud run services update vibehuntr-backend \
+  --region us-central1 \
+  --update-env-vars CORS_ORIGINS="https://$GCP_PROJECT_ID.web.app,https://$GCP_PROJECT_ID.firebaseapp.com"
+
+# Test CORS with curl
+curl -H "Origin: https://$GCP_PROJECT_ID.web.app" \
+  -H "Access-Control-Request-Method: POST" \
+  -X OPTIONS $BACKEND_URL/api/chat -v
+
+# Should see: Access-Control-Allow-Origin header in response
+```
+
+#### Deployment Quota Exceeded
+
+**Symptom**: "Quota exceeded" error during deployment
+
+**Solution**:
+- Firebase Hosting has deployment limits (10 per hour for free tier)
+- Wait an hour or upgrade to Blaze plan
+- Use preview channels for testing: `firebase hosting:channel:deploy preview`
+
+#### Old Version Still Showing
+
+**Symptom**: Deployed new version but old version still appears
+
+**Solution**:
+```bash
+# Clear browser cache (Ctrl+Shift+R or Cmd+Shift+R)
+
+# Check deployment status
+firebase hosting:releases:list --project $GCP_PROJECT_ID
+
+# Verify latest deployment
+curl -I https://$GCP_PROJECT_ID.web.app/index.html
+
+# Check Cache-Control header - may need to wait for cache expiry
+# index.html has max-age=3600 (1 hour)
+
+# Force cache clear by adding query parameter
+# https://$GCP_PROJECT_ID.web.app/?v=timestamp
 ```
 
 ### High Costs
@@ -521,6 +806,9 @@ gcloud run services describe vibehuntr-backend \
 
 # View billing reports in console
 # https://console.cloud.google.com/billing
+
+# Check Firebase Hosting usage
+# https://console.firebase.google.com/project/$GCP_PROJECT_ID/usage
 ```
 
 ## CI/CD Integration

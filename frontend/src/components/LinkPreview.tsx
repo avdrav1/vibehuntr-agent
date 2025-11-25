@@ -20,7 +20,7 @@ interface LinkPreviewProps {
 export function LinkPreview({ url, sessionId }: LinkPreviewProps) {
   const [metadata, setMetadata] = useState<LinkMetadata | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const [_error, setError] = useState(false);
 
   useEffect(() => {
     let isMounted = true;

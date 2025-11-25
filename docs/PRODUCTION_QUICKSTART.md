@@ -55,26 +55,20 @@ echo "Backend deployed at: ${BACKEND_URL}"
 ```bash
 cd ../frontend
 
-# Create storage bucket
-export BUCKET_NAME="${GCP_PROJECT_ID}-vibehuntr-frontend"
-gsutil mb -p ${GCP_PROJECT_ID} -l ${GCP_REGION} gs://${BUCKET_NAME}
-gsutil iam ch allUsers:objectViewer gs://${BUCKET_NAME}
-gsutil web set -m index.html -e index.html gs://${BUCKET_NAME}
-
-# Build and deploy
+# Build and deploy to Firebase Hosting
 npm ci
 VITE_API_URL=${BACKEND_URL} npm run build
-gsutil -m rsync -r -d dist/ gs://${BUCKET_NAME}
+firebase deploy --only hosting --project ${GCP_PROJECT_ID}
 
-echo "Frontend deployed at: https://storage.googleapis.com/${BUCKET_NAME}/index.html"
+echo "Frontend deployed at: https://${GCP_PROJECT_ID}.web.app"
 ```
 
 ### 5. Update CORS
 
 ```bash
-# Update backend CORS to allow frontend domain
+# Update backend CORS to allow Firebase Hosting domains
 gcloud run services update vibehuntr-backend \
-  --set-env-vars CORS_ORIGINS=https://storage.googleapis.com \
+  --set-env-vars CORS_ORIGINS=https://${GCP_PROJECT_ID}.web.app,https://${GCP_PROJECT_ID}.firebaseapp.com \
   --region ${GCP_REGION}
 ```
 
@@ -95,15 +89,15 @@ export GCP_REGION="us-central1"
 curl ${BACKEND_URL}/health
 
 # Test frontend
-curl https://storage.googleapis.com/${BUCKET_NAME}/index.html
+curl https://${GCP_PROJECT_ID}.web.app
 ```
 
 ## Next Steps
 
 1. **Set up custom domain** (optional)
-   - Configure Cloud CDN
-   - Add SSL certificate
+   - Add custom domain in Firebase Console
    - Update DNS records
+   - SSL certificates are automatic
 
 2. **Configure monitoring**
    - Set up Cloud Logging alerts
@@ -111,7 +105,7 @@ curl https://storage.googleapis.com/${BUCKET_NAME}/index.html
    - Configure error notifications
 
 3. **Optimize performance**
-   - Enable CDN caching
+   - CDN is included with Firebase Hosting
    - Adjust Cloud Run settings
    - Monitor and optimize costs
 
@@ -133,8 +127,11 @@ gcloud logging read "resource.type=cloud_run_revision" --limit 50
 
 ### Frontend not loading
 ```bash
-# Verify files uploaded
-gsutil ls gs://${BUCKET_NAME}
+# Check Firebase Hosting status
+firebase hosting:channel:list --project ${GCP_PROJECT_ID}
+
+# View deployment history
+firebase hosting:releases:list --project ${GCP_PROJECT_ID}
 ```
 
 ### CORS errors

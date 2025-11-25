@@ -44,6 +44,11 @@ class SessionManager:
         
         If the session doesn't exist, it will be created automatically.
         
+        This method includes duplicate prevention: if the last message in the
+        session has the same role and content, the new message will not be added.
+        This prevents accidental duplicate storage while still allowing legitimate
+        repeated messages (e.g., user sends "hello" twice in different turns).
+        
         Args:
             session_id: Unique identifier for the session
             role: Role of the message sender ('user' or 'assistant')
@@ -51,6 +56,21 @@ class SessionManager:
         """
         if session_id not in self.sessions:
             self.create_session(session_id)
+        
+        # Duplicate prevention: Check if the last message is identical
+        # This prevents accidental duplicate storage from bugs in the calling code
+        if self.sessions[session_id]:
+            last_message = self.sessions[session_id][-1]
+            if last_message.role == role and last_message.content == content:
+                # This is a duplicate of the last message - skip adding it
+                # Log this for debugging purposes
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(
+                    f"Prevented duplicate message storage in session {session_id}: "
+                    f"role={role}, content_length={len(content)}"
+                )
+                return
         
         message = Message(
             role=role,

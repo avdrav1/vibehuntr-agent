@@ -11,8 +11,8 @@ from fastapi.testclient import TestClient
 from unittest.mock import AsyncMock, patch, MagicMock
 import asyncio
 
-from backend.app.main import app
-from backend.app.models.link_preview import LinkMetadata
+from app.main import app
+from app.models.link_preview import LinkMetadata
 
 
 @pytest.fixture
@@ -111,7 +111,7 @@ def test_link_preview_404_error(
     
     Requirements: 1.4, 5.1
     """
-    from backend.app.services.metadata_fetcher import FetchError
+    from app.services.metadata_fetcher import FetchError
     
     # Setup mocks
     mock_metadata_cache.get = AsyncMock(return_value=None)  # Cache miss
@@ -155,7 +155,7 @@ def test_link_preview_timeout_error(
     
     Requirements: 1.4, 4.4, 5.2
     """
-    from backend.app.services.metadata_fetcher import FetchError
+    from app.services.metadata_fetcher import FetchError
     
     # Setup mocks
     mock_metadata_cache.get = AsyncMock(return_value=None)  # Cache miss
@@ -345,7 +345,7 @@ def test_link_preview_mixed_success_and_failure(
     
     Requirements: 1.2, 1.4
     """
-    from backend.app.services.metadata_fetcher import FetchError
+    from app.services.metadata_fetcher import FetchError
     
     # Setup mocks
     mock_metadata_cache.get = AsyncMock(return_value=None)  # Cache miss

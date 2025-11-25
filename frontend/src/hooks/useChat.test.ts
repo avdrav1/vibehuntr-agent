@@ -646,7 +646,7 @@ describe('useChat Hook', () => {
         await result.current.sendMessage('Hello');
       });
 
-      const messageCountBefore = result.current.messages.length;
+      // Note: message count tracked implicitly through result.current.messages
 
       await act(async () => {
         await result.current.retryLastMessage();

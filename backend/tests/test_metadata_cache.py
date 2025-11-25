@@ -2,8 +2,8 @@
 
 import asyncio
 import pytest
-from backend.app.services.metadata_cache import MetadataCache
-from backend.app.models.link_preview import LinkMetadata
+from app.services.metadata_cache import MetadataCache
+from app.models.link_preview import LinkMetadata
 
 
 @pytest.fixture
