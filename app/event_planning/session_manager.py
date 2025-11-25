@@ -94,6 +94,12 @@ class SessionManager:
         """
         messages = self.session_state.get("messages", [])
         
+        # Handle corrupted state where messages is not a list
+        if not isinstance(messages, list):
+            logger.warning(f"Corrupted messages state detected: {type(messages)}. Resetting to empty list.")
+            messages = []
+            self.session_state["messages"] = messages
+        
         if recent_only and len(messages) > recent_count:
             return messages[-recent_count:]
         

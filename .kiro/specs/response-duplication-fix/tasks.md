@@ -143,5 +143,5 @@
   - Update README with duplication prevention information
   - _Requirements: All_
 
-- [ ] 15. Final checkpoint - Ensure all tests pass
+- [x] 15. Final checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
