@@ -161,10 +161,11 @@ function extractVenueLinkURLs(text: string): string[] {
 /**
  * Extracts all valid HTTP/HTTPS URLs from message text
  * Applies validation and exclusion rules
+ * Deduplicates URLs to ensure each unique URL appears only once
  * 
  * @param text - The message content to extract URLs from
  * @param excludePatterns - Optional array of regex patterns to exclude
- * @returns Array of ExtractedURL objects with positions
+ * @returns Array of ExtractedURL objects with positions (deduplicated)
  */
 export function extractURLs(text: string, excludePatterns: string[] = []): ExtractedURL[] {
   if (!text) {
@@ -172,6 +173,7 @@ export function extractURLs(text: string, excludePatterns: string[] = []): Extra
   }
   
   const extractedURLs: ExtractedURL[] = [];
+  const seenURLs = new Set<string>();
   
   // First, extract venue link URLs to exclude them
   const venueLinkURLs = extractVenueLinkURLs(text);
@@ -209,6 +211,12 @@ export function extractURLs(text: string, excludePatterns: string[] = []): Extra
       continue;
     }
     
+    // Deduplicate: skip if we've already seen this URL
+    if (seenURLs.has(url)) {
+      continue;
+    }
+    
+    seenURLs.add(url);
     extractedURLs.push({
       url,
       startIndex,

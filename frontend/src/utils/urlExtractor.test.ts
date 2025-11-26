@@ -400,14 +400,29 @@ Check out these websites:
       expect(result[1].url).toBe('https://test.org');
     });
 
-    it('should handle duplicate URLs', () => {
+    it('should deduplicate URLs that appear multiple times', () => {
       const text = 'Visit https://example.com and also https://example.com again';
       const result = extractURLs(text);
       
-      // Should extract both occurrences
+      // Should only extract the first occurrence (deduplicated)
+      expect(result).toHaveLength(1);
+      expect(result[0].url).toBe('https://example.com');
+    });
+
+    it('should deduplicate multiple identical URLs', () => {
+      const text = `
+        Check https://example.com
+        Also https://example.com
+        And https://example.com again
+        Plus https://test.org
+        And https://test.org too
+      `;
+      const result = extractURLs(text);
+      
+      // Should only have 2 unique URLs
       expect(result).toHaveLength(2);
       expect(result[0].url).toBe('https://example.com');
-      expect(result[1].url).toBe('https://example.com');
+      expect(result[1].url).toBe('https://test.org');
     });
 
     it('should handle URLs with www prefix', () => {
