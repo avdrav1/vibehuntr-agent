@@ -1,8 +1,8 @@
 """Feedback repository implementation."""
 
 from typing import Dict, List
-from app.event_planning.models.feedback import EventFeedback
-from app.event_planning.repositories.base import JsonFileRepository
+from backend.app.event_planning.models.feedback import EventFeedback
+from backend.app.event_planning.repositories.base import JsonFileRepository
 
 
 class FeedbackRepository(JsonFileRepository[EventFeedback]):

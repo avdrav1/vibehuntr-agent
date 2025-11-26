@@ -120,9 +120,21 @@ class ConversationContext:
                     break
         
         # Extract date and time
+        # Try to find date and time together first
         date_time_pattern = r'(tomorrow|tonight|today|(?:on\s+)?(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)|(?:\d{1,2}/\d{1,2}))\s+(?:night|morning|afternoon|evening)?\s*(?:at\s+)?(\d+(?::\d+)?\s*(?:am|pm)?)?'
         date_match = re.search(date_time_pattern, message_lower)
-        if date_match:
+        
+        # Also try to find time and date separately (e.g., "at 8pm tomorrow")
+        time_date_pattern = r'at\s+(\d+(?::\d+)?\s*(?:am|pm))\s+(tomorrow|tonight|today|(?:on\s+)?(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday))'
+        time_date_match = re.search(time_date_pattern, message_lower)
+        
+        if time_date_match:
+            # Time comes before date (e.g., "at 8pm tomorrow")
+            time_part = time_date_match.group(1)
+            date_part = time_date_match.group(2)
+            self.event_date_time = f"{date_part} at {time_part}"
+        elif date_match:
+            # Date comes before time (e.g., "tomorrow at 8pm")
             date_part = date_match.group(1)
             time_part = date_match.group(2) if len(date_match.groups()) >= 2 and date_match.group(2) else None
             if time_part:
@@ -177,7 +189,8 @@ class ConversationContext:
         """Extract venue information from agent's response."""
         # Extract Place IDs and venue names
         # Pattern: **Venue Name** ... Place ID: ChIJabc123
-        venue_pattern = r'\*\*([^*]+)\*\*.*?Place ID:\s*(ChI[a-zA-Z0-9_-]+)'
+        # Also handles emoji prefixes like 🆔 Place ID:
+        venue_pattern = r'\*\*([^*]+)\*\*.*?(?:🆔\s*)?Place ID:\s*(ChI[a-zA-Z0-9_-]+)'
         
         matches = re.findall(venue_pattern, message, re.DOTALL)
         

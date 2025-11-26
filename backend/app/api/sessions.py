@@ -12,12 +12,12 @@ import logging
 import uuid
 from fastapi import APIRouter, HTTPException, Path
 
-from app.models.schemas import (
+from backend.app.models.schemas import (
     SessionResponse,
     MessagesResponse,
     ErrorResponse,
 )
-from app.services.session_manager import session_manager
+from backend.app.services.session_manager import session_manager
 
 
 # Configure logging
@@ -130,12 +130,49 @@ async def get_messages(
                 detail=f"Session {session_id} not found"
             )
         
-        # Get messages from session manager
-        messages = session_manager.get_messages(session_id)
+        # Get messages from ADK session service (the source of truth)
+        # The ADK session service automatically stores all messages during agent invocation
+        try:
+            from app.event_planning.agent_invoker import _session_service
+            adk_session = _session_service.get_session_sync(
+                session_id=session_id,
+                app_name="vibehuntr_playground",
+                user_id="web_user"
+            )
+            
+            # Convert ADK messages to our format
+            messages = []
+            if hasattr(adk_session, 'history') and adk_session.history:
+                for msg in adk_session.history:
+                    # ADK stores messages as Content objects with parts
+                    role = msg.role if hasattr(msg, 'role') else 'unknown'
+                    content_text = ''
+                    if hasattr(msg, 'parts') and msg.parts:
+                        # Extract text from all parts
+                        content_text = ''.join(
+                            part.text for part in msg.parts 
+                            if hasattr(part, 'text') and part.text
+                        )
+                    
+                    messages.append({
+                        'role': role,
+                        'content': content_text,
+                        'timestamp': ''  # ADK doesn't store timestamps
+                    })
+            
+            logger.info(
+                f"Retrieved {len(messages)} messages from ADK session {session_id}"
+            )
+        except Exception as adk_error:
+            logger.warning(
+                f"Failed to get messages from ADK session, falling back to session_manager: {adk_error}"
+            )
+            # Fallback to session_manager if ADK fails
+            messages = session_manager.get_messages(session_id)
+            logger.info(
+                f"Retrieved {len(messages)} messages from session_manager for {session_id}"
+            )
         
-        logger.info(
-            f"Retrieved {len(messages)} messages for session {session_id}"
-        )
         return MessagesResponse(messages=messages)
         
     except HTTPException:

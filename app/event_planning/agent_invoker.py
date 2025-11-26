@@ -6,7 +6,8 @@ maintains conversation history and provides it to the agent.
 """
 
 import logging
-from typing import Dict, List, Generator, Any
+import hashlib
+from typing import Dict, List, Generator, Any, Set
 from datetime import datetime
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
@@ -163,6 +164,7 @@ def invoke_agent_streaming(
         from app.event_planning.context_manager import get_context
         
         enhanced_message = message  # Default to original message
+        context = None  # Initialize context variable
         
         try:
             context = get_context(session_id)
@@ -345,6 +347,14 @@ def invoke_agent_streaming(
                     exc_info=True
                 )
         
+        # Hash-based duplicate detection
+        yielded_chunk_hashes: Set[str] = set()
+        accumulated_response = ""
+        
+        def get_chunk_hash(text: str) -> str:
+            """Generate a hash for a text chunk."""
+            return hashlib.md5(text.encode('utf-8')).hexdigest()
+        
         try:
             for event in events:
                 # Check for tool calls if requested
@@ -369,181 +379,182 @@ def invoke_agent_streaming(
                     for part in event.content.parts:
                         if part.text:
                             try:
-                                # Get accumulated text with error handling
-                                accumulated_text = ""
-                                if duplicate_detector:
-                                    try:
-                                        accumulated_text = duplicate_detector.get_accumulated_text()
-                                    except Exception as acc_error:
-                                        logger.error(
-                                            f"Failed to get accumulated text: {type(acc_error).__name__}: {acc_error}",
-                                            exc_info=True
-                                        )
-                                
-                                # Check if this is new content or a duplicate
-                                if part.text.startswith(accumulated_text):
+                                # Hash-based duplicate detection
+                                # Check if part.text starts with what we've already accumulated
+                                if part.text.startswith(accumulated_response):
                                     # This is an accumulated message, only yield the new part
-                                    new_content = part.text[len(accumulated_text):]
+                                    new_content = part.text[len(accumulated_response):]
                                     if new_content:
-                                        # Set pipeline stage for token yielding with error handling
-                                        if duplicate_detector:
-                                            try:
-                                                duplicate_detector.set_pipeline_stage(PipelineStage.TOKEN_YIELDING)
-                                            except Exception as stage_error:
-                                                logger.error(
-                                                    f"Failed to set pipeline stage: {type(stage_error).__name__}: {stage_error}",
-                                                    exc_info=True
-                                                )
+                                        # Check if we've already yielded this chunk using hash
+                                        chunk_hash = get_chunk_hash(new_content)
                                         
-                                        # Use enhanced duplicate detection with stage tracking and error handling
-                                        is_duplicate = False
-                                        if duplicate_detector:
-                                            try:
-                                                is_duplicate = duplicate_detector.is_duplicate(new_content, PipelineStage.TOKEN_YIELDING)
-                                            except Exception as dup_error:
-                                                logger.error(
-                                                    f"Duplicate detection failed, assuming not duplicate: {type(dup_error).__name__}: {dup_error}",
-                                                    exc_info=True
-                                                )
-                                                is_duplicate = False
-                                        
-                                        if not is_duplicate:
-                                            # Track chunk with ResponseTracker with error handling
-                                            if tracker:
-                                                try:
-                                                    is_unique = tracker.track_chunk(new_content)
-                                                except Exception as track_error:
-                                                    logger.error(
-                                                        f"Chunk tracking failed: {type(track_error).__name__}: {track_error}",
-                                                        exc_info=True
-                                                    )
+                                        if chunk_hash not in yielded_chunk_hashes:
+                                            # Content-level duplicate detection (after hash-based check)
+                                            is_content_dup = False
+                                            dup_preview = None
                                             
-                                            # Add to duplicate detector with error handling
                                             if duplicate_detector:
                                                 try:
-                                                    duplicate_detector.add_chunk(new_content)
-                                                    duplicate_detector.update_accumulated_text(part.text)
-                                                except Exception as add_error:
+                                                    is_content_dup, dup_preview = duplicate_detector.contains_duplicate_content(new_content, session_id=session_id)
+                                                except Exception as content_dup_error:
                                                     logger.error(
-                                                        f"Failed to add chunk to detector: {type(add_error).__name__}: {add_error}",
+                                                        f"Content duplicate detection failed: {type(content_dup_error).__name__}: {content_dup_error}",
+                                                        extra={
+                                                            "session_id": session_id,
+                                                            "error_type": type(content_dup_error).__name__,
+                                                            "timestamp": datetime.now().isoformat()
+                                                        },
                                                         exc_info=True
                                                     )
+                                                    # Graceful degradation - allow content through
+                                                    is_content_dup = False
+                                                    dup_preview = None
                                             
-                                            logger.debug(f"Yielding new content: {len(new_content)} chars")
+                                            if is_content_dup:
+                                                # Skip this content - it's a duplicate
+                                                # Note: Detailed logging (with similarity score and position) 
+                                                # is already done in duplicate_detector.contains_duplicate_content()
+                                                logger.info(
+                                                    f"Skipping content-level duplicate chunk",
+                                                    extra={
+                                                        "session_id": session_id,
+                                                        "duplicate_preview": dup_preview,
+                                                        "chunk_length": len(new_content),
+                                                        "timestamp": datetime.now().isoformat()
+                                                    }
+                                                )
+                                                # Increment metrics counter
+                                                if metrics:
+                                                    try:
+                                                        metrics.increment_duplicate_detected(session_id)
+                                                    except Exception as metrics_error:
+                                                        logger.debug(f"Metrics error: {metrics_error}")
+                                                # Continue to next chunk
+                                                continue
                                             
-                                            # Log token yield event with error handling
-                                            if tracker:
+                                            # Not a duplicate - mark this chunk as yielded
+                                            yielded_chunk_hashes.add(chunk_hash)
+                                            accumulated_response = part.text
+                                            
+                                            # Add content to tracking
+                                            if duplicate_detector:
                                                 try:
-                                                    tracker.log_token_yield(new_content, token_index)
-                                                except Exception as log_error:
-                                                    # Don't let logging failures affect yielding
-                                                    pass
-                                            token_index += 1
+                                                    duplicate_detector.add_content(new_content)
+                                                except Exception as add_error:
+                                                    logger.debug(f"Failed to add content to tracking: {add_error}")
                                             
-                                            yield {'type': 'text', 'content': new_content}
-                                        else:
-                                            # This is a duplicate chunk - skip it
-                                            logger.warning(f"Detected and skipped duplicate chunk: {len(new_content)} chars")
-                                            # Track as duplicate with error handling
+                                            # Track chunk with ResponseTracker
                                             if tracker:
                                                 try:
                                                     tracker.track_chunk(new_content)
+                                                    tracker.log_token_yield(new_content, token_index)
                                                 except Exception as track_error:
-                                                    logger.error(
-                                                        f"Failed to track duplicate: {type(track_error).__name__}: {track_error}",
-                                                        exc_info=True
-                                                    )
-                                            # Increment metrics counter with error handling
+                                                    logger.debug(f"Tracker error: {track_error}")
+                                            
+                                            token_index += 1
+                                            logger.debug(f"Yielding new content: {len(new_content)} chars")
+                                            yield {'type': 'text', 'content': new_content}
+                                        else:
+                                            # Duplicate chunk detected - skip it
+                                            logger.debug(f"Skipped duplicate chunk: {len(new_content)} chars")
+                                            if metrics:
+                                                try:
+                                                    metrics.increment_duplicate_detected(session_id)
+                                                except:
+                                                    pass
+                                    else:
+                                        # No new content - skip
+                                        logger.debug(f"No new content in accumulated message")
+                                else:
+                                    # part.text doesn't start with accumulated_response
+                                    # This means it's a standalone chunk (Gemini 2.0 Flash Exp behavior)
+                                    
+                                    # Check if this is a final complete response re-send
+                                    # If accumulated_response is substantial and part.text contains it, skip
+                                    if accumulated_response and len(accumulated_response) > 100 and accumulated_response in part.text:
+                                        logger.debug(f"Skipped final complete response re-send: {len(part.text)} chars")
+                                        if metrics:
+                                            try:
+                                                metrics.increment_duplicate_detected(session_id)
+                                            except:
+                                                pass
+                                        continue
+                                    
+                                    chunk_hash = get_chunk_hash(part.text)
+                                    
+                                    if chunk_hash not in yielded_chunk_hashes:
+                                        # Content-level duplicate detection (after hash-based check)
+                                        is_content_dup = False
+                                        dup_preview = None
+                                        
+                                        if duplicate_detector:
+                                            try:
+                                                is_content_dup, dup_preview = duplicate_detector.contains_duplicate_content(part.text, session_id=session_id)
+                                            except Exception as content_dup_error:
+                                                logger.error(
+                                                    f"Content duplicate detection failed: {type(content_dup_error).__name__}: {content_dup_error}",
+                                                    extra={
+                                                        "session_id": session_id,
+                                                        "error_type": type(content_dup_error).__name__,
+                                                        "timestamp": datetime.now().isoformat()
+                                                    },
+                                                    exc_info=True
+                                                )
+                                                # Graceful degradation - allow content through
+                                                is_content_dup = False
+                                                dup_preview = None
+                                        
+                                        if is_content_dup:
+                                            # Skip this content - it's a duplicate
+                                            # Note: Detailed logging (with similarity score and position) 
+                                            # is already done in duplicate_detector.contains_duplicate_content()
+                                            logger.info(
+                                                f"Skipping content-level duplicate chunk",
+                                                extra={
+                                                    "session_id": session_id,
+                                                    "duplicate_preview": dup_preview,
+                                                    "chunk_length": len(part.text),
+                                                    "timestamp": datetime.now().isoformat()
+                                                }
+                                            )
+                                            # Increment metrics counter
                                             if metrics:
                                                 try:
                                                     metrics.increment_duplicate_detected(session_id)
                                                 except Exception as metrics_error:
-                                                    logger.error(
-                                                        f"Failed to increment duplicate counter: {type(metrics_error).__name__}: {metrics_error}",
-                                                        exc_info=True
-                                                    )
-                                    else:
-                                        # No new content, this is a duplicate - skip it
-                                        logger.debug(f"Skipping duplicate content: {len(part.text)} chars")
-                                else:
-                                    # This is completely new content (shouldn't happen, but handle it)
-                                    logger.warning(f"Unexpected: part.text doesn't start with accumulated_text")
-                                    
-                                    # Set pipeline stage for token yielding with error handling
-                                    if duplicate_detector:
-                                        try:
-                                            duplicate_detector.set_pipeline_stage(PipelineStage.TOKEN_YIELDING)
-                                        except Exception as stage_error:
-                                            logger.error(
-                                                f"Failed to set pipeline stage: {type(stage_error).__name__}: {stage_error}",
-                                                exc_info=True
-                                            )
-                                    
-                                    # Use enhanced duplicate detection with stage tracking and error handling
-                                    is_duplicate = False
-                                    if duplicate_detector:
-                                        try:
-                                            is_duplicate = duplicate_detector.is_duplicate(part.text, PipelineStage.TOKEN_YIELDING)
-                                        except Exception as dup_error:
-                                            logger.error(
-                                                f"Duplicate detection failed, assuming not duplicate: {type(dup_error).__name__}: {dup_error}",
-                                                exc_info=True
-                                            )
-                                            is_duplicate = False
-                                    
-                                    if not is_duplicate:
-                                        # Track chunk with ResponseTracker with error handling
-                                        if tracker:
-                                            try:
-                                                is_unique = tracker.track_chunk(part.text)
-                                            except Exception as track_error:
-                                                logger.error(
-                                                    f"Chunk tracking failed: {type(track_error).__name__}: {track_error}",
-                                                    exc_info=True
-                                                )
+                                                    logger.debug(f"Metrics error: {metrics_error}")
+                                            # Continue to next chunk
+                                            continue
                                         
-                                        # Add to duplicate detector with error handling
+                                        # New chunk - yield it
+                                        yielded_chunk_hashes.add(chunk_hash)
+                                        accumulated_response += part.text
+                                        
+                                        # Add content to tracking
                                         if duplicate_detector:
                                             try:
-                                                duplicate_detector.add_chunk(part.text)
-                                                accumulated_text = duplicate_detector.get_accumulated_text()
-                                                duplicate_detector.update_accumulated_text(accumulated_text + part.text)
+                                                duplicate_detector.add_content(part.text)
                                             except Exception as add_error:
-                                                logger.error(
-                                                    f"Failed to add chunk to detector: {type(add_error).__name__}: {add_error}",
-                                                    exc_info=True
-                                                )
+                                                logger.debug(f"Failed to add content to tracking: {add_error}")
                                         
-                                        # Log token yield event with error handling
-                                        if tracker:
-                                            try:
-                                                tracker.log_token_yield(part.text, token_index)
-                                            except Exception as log_error:
-                                                # Don't let logging failures affect yielding
-                                                pass
-                                        token_index += 1
-                                        
-                                        yield {'type': 'text', 'content': part.text}
-                                    else:
-                                        logger.warning(f"Detected and skipped duplicate unexpected chunk: {len(part.text)} chars")
-                                        # Track as duplicate with error handling
                                         if tracker:
                                             try:
                                                 tracker.track_chunk(part.text)
-                                            except Exception as track_error:
-                                                logger.error(
-                                                    f"Failed to track duplicate: {type(track_error).__name__}: {track_error}",
-                                                    exc_info=True
-                                                )
-                                        # Increment metrics counter with error handling
+                                                tracker.log_token_yield(part.text, token_index)
+                                            except:
+                                                pass
+                                        
+                                        token_index += 1
+                                        logger.debug(f"Yielding standalone chunk: {len(part.text)} chars")
+                                        yield {'type': 'text', 'content': part.text}
+                                    else:
+                                        # Duplicate chunk - skip
+                                        logger.debug(f"Skipped duplicate standalone chunk: {len(part.text)} chars")
                                         if metrics:
                                             try:
                                                 metrics.increment_duplicate_detected(session_id)
-                                            except Exception as metrics_error:
-                                                logger.error(
-                                                    f"Failed to increment duplicate counter: {type(metrics_error).__name__}: {metrics_error}",
-                                                    exc_info=True
-                                                )
+                                            except:
+                                                pass
                             except Exception as part_error:
                                 # If processing this part fails, log error and continue
                                 logger.error(
@@ -554,22 +565,21 @@ def invoke_agent_streaming(
                                 yield {'type': 'text', 'content': part.text}
             
             # Update context with agent's response (with error handling)
-            accumulated_text = duplicate_detector.get_accumulated_text()
-            if accumulated_text:
+            if accumulated_response and context:
                 try:
                     logger.info(
                         f"Extracting entities from agent response",
                         extra={
                             "timestamp": datetime.now().isoformat(),
                             "session_id": session_id,
-                            "response_length": len(accumulated_text)
+                            "response_length": len(accumulated_response)
                         }
                     )
                     
                     # Store venues count before update
                     venues_before = len(context.recent_venues)
                     
-                    context.update_from_agent_message(accumulated_text)
+                    context.update_from_agent_message(accumulated_response)
                     
                     # Log entity storage
                     venues_after = len(context.recent_venues)
@@ -594,6 +604,14 @@ def invoke_agent_streaming(
                         },
                         exc_info=True
                     )
+            elif not context:
+                logger.warning(
+                    f"Context not available for updating from agent response",
+                    extra={
+                        "timestamp": datetime.now().isoformat(),
+                        "session_id": session_id
+                    }
+                )
             
             # Get and log final metrics with error handling
             response_metadata = None

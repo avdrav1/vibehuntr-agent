@@ -13,14 +13,14 @@ from typing import AsyncGenerator
 from fastapi import APIRouter, HTTPException, Query
 from sse_starlette.sse import EventSourceResponse
 
-from app.models.schemas import (
+from backend.app.models.schemas import (
     ChatRequest,
     ChatResponse,
     ErrorResponse,
     StreamEvent,
 )
-from app.services.session_manager import session_manager
-from app.services.agent_service import get_agent_service, AgentInvocationError
+from backend.app.services.session_manager import session_manager
+from backend.app.services.agent_service import get_agent_service, AgentInvocationError
 
 
 # Configure logging
@@ -186,13 +186,15 @@ async def stream_chat(
                 }
                 return
             
-            # Add user message to session
-            session_manager.add_message(
-                session_id=session_id,
-                role="user",
-                content=message
-            )
-            logger.debug(f"Added user message to session {session_id}")
+            # NOTE: Do NOT add user message to session_manager here
+            # The ADK session service automatically stores messages during agent invocation
+            # Adding it here would create duplicates
+            # session_manager.add_message(
+            #     session_id=session_id,
+            #     role="user",
+            #     content=message
+            # )
+            logger.debug(f"User message will be stored by ADK session service for {session_id}")
             
             # Get agent service
             agent_service = get_agent_service()
@@ -225,14 +227,16 @@ async def stream_chat(
                     f"{len(full_response)} tokens"
                 )
                 
-                # Add complete response to session
-                complete_response = ''.join(full_response)
-                session_manager.add_message(
-                    session_id=session_id,
-                    role="assistant",
-                    content=complete_response
-                )
-                logger.debug(f"Added assistant response to session {session_id}")
+                # NOTE: Do NOT add assistant response to session_manager here
+                # The ADK session service automatically stores messages during agent invocation
+                # Adding it here would create duplicates
+                # complete_response = ''.join(full_response)
+                # session_manager.add_message(
+                #     session_id=session_id,
+                #     role="assistant",
+                #     content=complete_response
+                # )
+                logger.debug(f"Assistant response stored by ADK session service for {session_id}")
                 
                 # Send completion event
                 done_event = StreamEvent(type="done")

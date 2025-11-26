@@ -4,7 +4,7 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from app.event_planning.places_tools import search_venues_tool, get_venue_details_tool
+from backend.app.event_planning.places_tools import search_venues_tool, get_venue_details_tool
 
 
 def test_places_integration():

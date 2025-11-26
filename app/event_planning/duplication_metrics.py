@@ -21,6 +21,7 @@ class SessionMetrics:
     total_responses: int = 0
     responses_with_duplicates: int = 0
     total_duplicates_detected: int = 0
+    total_content_duplicates_detected: int = 0
     last_duplication_time: Optional[datetime] = None
     last_clean_response_time: Optional[datetime] = None
     
@@ -41,6 +42,7 @@ class SessionMetrics:
             "total_responses": self.total_responses,
             "responses_with_duplicates": self.responses_with_duplicates,
             "total_duplicates_detected": self.total_duplicates_detected,
+            "total_content_duplicates_detected": self.total_content_duplicates_detected,
             "duplication_rate": self.get_duplication_rate(),
             "last_duplication_time": self.last_duplication_time.isoformat() if self.last_duplication_time else None,
             "last_clean_response_time": self.last_clean_response_time.isoformat() if self.last_clean_response_time else None
@@ -75,6 +77,7 @@ class DuplicationMetrics:
         """
         self._session_metrics: Dict[str, SessionMetrics] = {}
         self._global_duplicates = 0
+        self._global_content_duplicates = 0
         self._global_responses = 0
         self._lock = Lock()
         self._enable_logging = enable_logging
@@ -157,6 +160,63 @@ class DuplicationMetrics:
             # Don't let metrics failures affect functionality
             logger.error(
                 f"Failed to increment duplicate counter: {type(e).__name__}: {e}",
+                exc_info=True
+            )
+    
+    def increment_content_duplicate_detected(self, session_id: str, count: int = 1) -> None:
+        """Increment counter when content-level duplicate is detected.
+        
+        This method increments the content-level duplication counter for a specific session
+        and logs a warning with session context. Content-level duplicates are tracked
+        separately from chunk-level duplicates to distinguish between streaming issues
+        and LLM repetition issues.
+        
+        Args:
+            session_id: Session identifier
+            count: Number of content duplicates to add (default: 1)
+        """
+        try:
+            with self._lock:
+                # Update session metrics
+                try:
+                    session_metrics = self._get_or_create_session_metrics(session_id)
+                    session_metrics.total_content_duplicates_detected += count
+                    session_metrics.last_duplication_time = datetime.now()
+                    
+                    # Update global counter
+                    self._global_content_duplicates += count
+                except Exception as metrics_error:
+                    # Log error but don't crash
+                    logger.error(
+                        f"Failed to update content duplicate metrics: {type(metrics_error).__name__}: {metrics_error}",
+                        exc_info=True
+                    )
+                    return
+                
+                # Log warning with session context (only log every 5th content duplicate to avoid performance issues)
+                if self._enable_logging and session_metrics.total_content_duplicates_detected % 5 == 1:
+                    try:
+                        logger.warning(
+                            f"Content-level duplicate detected in session {session_id}",
+                            extra={
+                                "timestamp": datetime.now().isoformat(),
+                                "session_id": session_id,
+                                "content_duplicates_in_session": session_metrics.total_content_duplicates_detected,
+                                "chunk_duplicates_in_session": session_metrics.total_duplicates_detected,
+                                "total_global_content_duplicates": self._global_content_duplicates,
+                                "total_global_chunk_duplicates": self._global_duplicates
+                            }
+                        )
+                    except Exception as log_error:
+                        # Fallback to basic logging
+                        print(
+                            f"Warning: Content-level duplicate detected in session {session_id}",
+                            file=__import__('sys').stderr
+                        )
+        except Exception as e:
+            # Don't let metrics failures affect functionality
+            logger.error(
+                f"Failed to increment content duplicate counter: {type(e).__name__}: {e}",
                 exc_info=True
             )
     
@@ -346,12 +406,20 @@ class DuplicationMetrics:
                 for m in self._session_metrics.values()
             )
             
+            # Calculate duplication rate inline to avoid deadlock
+            # (don't call get_duplication_rate() while holding the lock)
+            if self._global_responses == 0:
+                global_duplication_rate = 0.0
+            else:
+                global_duplication_rate = total_responses_with_dups / self._global_responses
+            
             return {
                 "total_sessions": len(self._session_metrics),
                 "total_responses": self._global_responses,
                 "responses_with_duplicates": total_responses_with_dups,
                 "total_duplicates_detected": self._global_duplicates,
-                "global_duplication_rate": self.get_duplication_rate(),
+                "total_content_duplicates_detected": self._global_content_duplicates,
+                "global_duplication_rate": global_duplication_rate,
                 "timestamp": datetime.now().isoformat()
             }
     
@@ -429,6 +497,7 @@ class DuplicationMetrics:
                 
                 # Update global counters
                 self._global_duplicates -= old_metrics.total_duplicates_detected
+                self._global_content_duplicates -= old_metrics.total_content_duplicates_detected
                 self._global_responses -= old_metrics.total_responses
                 
                 # Remove session metrics
@@ -447,6 +516,7 @@ class DuplicationMetrics:
         with self._lock:
             self._session_metrics.clear()
             self._global_duplicates = 0
+            self._global_content_duplicates = 0
             self._global_responses = 0
             
             logger.info(

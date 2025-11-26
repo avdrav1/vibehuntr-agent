@@ -5,12 +5,38 @@ to identify and prevent duplicate content in agent responses.
 """
 
 import logging
-from typing import Set, List, Optional, Dict, Any
+import re
+from typing import Set, List, Optional, Dict, Any, Tuple
 from difflib import SequenceMatcher
 from enum import Enum
 from datetime import datetime
+from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class ContentDuplicationEvent:
+    """Event logged when content-level duplication is detected."""
+    event_id: str
+    session_id: str
+    timestamp: datetime
+    duplicate_sentence: str
+    similar_sentence: str
+    similarity_score: float
+    position: int
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert event to dictionary for logging."""
+        return {
+            "event_id": self.event_id,
+            "session_id": self.session_id,
+            "timestamp": self.timestamp.isoformat(),
+            "duplicate_sentence_preview": self.duplicate_sentence[:100],
+            "similar_sentence_preview": self.similar_sentence[:100],
+            "similarity_score": self.similarity_score,
+            "position": self.position
+        }
 
 
 class DuplicationSource(Enum):
@@ -76,26 +102,34 @@ class PatternDetector:
 class DuplicateDetector:
     """Enhanced duplicate detection with multiple strategies."""
     
-    def __init__(self, similarity_threshold: float = 0.95):
+    def __init__(self, similarity_threshold: float = 0.95, content_similarity_threshold: float = 0.85):
         """
         Initialize duplicate detector.
         
         Args:
-            similarity_threshold: Threshold for content similarity (0.0 to 1.0)
+            similarity_threshold: Threshold for chunk similarity (0.0 to 1.0)
                                 Higher values mean stricter matching
+            content_similarity_threshold: Threshold for sentence-level content similarity (0.0 to 1.0)
+                                        Default 0.85 for detecting semantic duplicates
         """
         self.accumulated_text = ""
         self.seen_chunks: Set[int] = set()
         self.chunk_sequence: List[str] = []
         self.pattern_detector = PatternDetector()
         self.similarity_threshold = similarity_threshold
+        self.content_similarity_threshold = content_similarity_threshold
+        
+        # Content-level duplicate detection
+        self.accumulated_sentences: List[str] = []
+        self.sentence_window_size = 50  # Only compare against last 50 sentences
         
         # Duplication source tracking
         self.duplication_events: List[Dict[str, Any]] = []
         self.current_stage: Optional[PipelineStage] = None
         
         logger.debug(
-            f"Initialized DuplicateDetector with similarity_threshold={similarity_threshold}"
+            f"Initialized DuplicateDetector with similarity_threshold={similarity_threshold}, "
+            f"content_similarity_threshold={content_similarity_threshold}"
         )
     
     def is_duplicate(self, chunk: str, stage: Optional[PipelineStage] = None) -> bool:
@@ -229,12 +263,20 @@ class DuplicateDetector:
         Returns:
             Similarity ratio between 0.0 and 1.0
         """
-        if not text1 or not text2:
+        try:
+            if not text1 or not text2:
+                return 0.0
+            
+            # Use SequenceMatcher for similarity calculation
+            matcher = SequenceMatcher(None, text1, text2)
+            return matcher.ratio()
+        except Exception as e:
+            # Return 0.0 (not similar) on error
+            logger.error(
+                f"Similarity calculation failed: {type(e).__name__}: {e}",
+                exc_info=True
+            )
             return 0.0
-        
-        # Use SequenceMatcher for similarity calculation
-        matcher = SequenceMatcher(None, text1, text2)
-        return matcher.ratio()
     
     def add_chunk(self, chunk: str) -> None:
         """
@@ -428,3 +470,242 @@ class DuplicateDetector:
             "by_stage": by_stage,
             "by_method": by_method
         }
+    
+    def _split_into_sentences(self, text: str) -> List[str]:
+        """
+        Split text into sentences using regex.
+        
+        Args:
+            text: The text to split into sentences
+            
+        Returns:
+            List of sentences
+        """
+        try:
+            if not text or not text.strip():
+                return []
+            
+            # Split on sentence-ending punctuation followed by whitespace
+            # Pattern: [.!?]+ followed by whitespace
+            sentences = re.split(r'[.!?]+\s+', text)
+            
+            # Filter out empty strings and strip whitespace
+            sentences = [s.strip() for s in sentences if s.strip()]
+            
+            return sentences
+            
+        except Exception as e:
+            # Fall back to paragraph splitting on error
+            logger.error(
+                f"Sentence splitting failed: {type(e).__name__}: {e}",
+                exc_info=True
+            )
+            try:
+                # Fallback: split by paragraphs
+                paragraphs = text.split('\n\n')
+                return [p.strip() for p in paragraphs if p.strip()]
+            except Exception as fallback_error:
+                logger.error(
+                    f"Paragraph splitting fallback failed: {type(fallback_error).__name__}: {fallback_error}",
+                    exc_info=True
+                )
+                # Last resort: return the whole text as one sentence
+                return [text] if text else []
+    
+    def _find_similar_sentence(self, sentence: str) -> Optional[Tuple[str, float, int]]:
+        """
+        Find if sentence is similar to any accumulated sentence.
+        
+        Args:
+            sentence: The sentence to check for similarity
+            
+        Returns:
+            Optional tuple of (similar_sentence, similarity_score, position) if found, None otherwise
+        """
+        try:
+            if not sentence or not self.accumulated_sentences:
+                return None
+            
+            # Only compare against the last N sentences for performance
+            recent_sentences = self.accumulated_sentences[-self.sentence_window_size:]
+            
+            for idx, accumulated_sentence in enumerate(recent_sentences):
+                try:
+                    similarity = self._calculate_similarity(sentence, accumulated_sentence)
+                    
+                    # Log at DEBUG level for similarity checks
+                    logger.debug(
+                        f"Similarity check: {similarity:.3f} between "
+                        f"'{sentence[:50]}...' and '{accumulated_sentence[:50]}...'",
+                        extra={
+                            "similarity_score": similarity,
+                            "threshold": self.content_similarity_threshold,
+                            "sentence_preview": sentence[:100],
+                            "compared_sentence_preview": accumulated_sentence[:100],
+                            "position": idx
+                        }
+                    )
+                    
+                    if similarity >= self.content_similarity_threshold:
+                        # Calculate actual position in full accumulated sentences list
+                        actual_position = len(self.accumulated_sentences) - len(recent_sentences) + idx
+                        
+                        logger.debug(
+                            f"Similar sentence found with similarity {similarity:.3f}: "
+                            f"'{sentence[:50]}...' vs '{accumulated_sentence[:50]}...'",
+                            extra={
+                                "similarity_score": similarity,
+                                "position": actual_position,
+                                "sentence_preview": sentence[:100],
+                                "similar_sentence_preview": accumulated_sentence[:100]
+                            }
+                        )
+                        return (accumulated_sentence, similarity, actual_position)
+                        
+                except Exception as calc_error:
+                    # Log at ERROR level for detection failures
+                    logger.error(
+                        f"Similarity calculation failed for sentence pair: {type(calc_error).__name__}: {calc_error}",
+                        extra={
+                            "sentence_preview": sentence[:100] if sentence else "",
+                            "compared_sentence_preview": accumulated_sentence[:100] if accumulated_sentence else "",
+                            "error_type": type(calc_error).__name__
+                        },
+                        exc_info=True
+                    )
+                    continue
+            
+            return None
+            
+        except Exception as e:
+            # Log at ERROR level for detection failures
+            logger.error(
+                f"Similar sentence search failed: {type(e).__name__}: {e}",
+                extra={
+                    "sentence_preview": sentence[:100] if sentence else "",
+                    "error_type": type(e).__name__
+                },
+                exc_info=True
+            )
+            return None
+    
+    def contains_duplicate_content(self, new_text: str, session_id: str = "unknown") -> Tuple[bool, Optional[str]]:
+        """
+        Check if new_text contains content similar to accumulated response.
+        
+        This is the main entry point for content-level duplicate detection.
+        
+        Args:
+            new_text: The new text chunk to check
+            session_id: Session identifier for logging
+            
+        Returns:
+            tuple: (is_duplicate, duplicate_sentence_preview)
+                  is_duplicate: True if duplicate content detected
+                  duplicate_sentence_preview: Preview of the duplicate sentence if found
+        """
+        try:
+            # Edge case: empty or whitespace-only content
+            if not new_text or not new_text.strip():
+                logger.debug("Skipping duplicate detection for empty/whitespace content")
+                return (False, None)
+            
+            # Edge case: very short chunks (< 10 chars)
+            if len(new_text) < 10:
+                logger.debug(f"Skipping duplicate detection for very short chunk: {len(new_text)} chars")
+                return (False, None)
+            
+            # Edge case: empty accumulated response (first chunk)
+            if not self.accumulated_sentences:
+                logger.debug("Skipping duplicate detection for first chunk (no accumulated sentences)")
+                return (False, None)
+            
+            # Split new text into sentences
+            new_sentences = self._split_into_sentences(new_text)
+            
+            if not new_sentences:
+                logger.debug("No sentences found in new text after splitting")
+                return (False, None)
+            
+            # Check each sentence against accumulated sentences
+            for sentence in new_sentences:
+                if not sentence or len(sentence) < 10:
+                    # Skip very short sentences
+                    continue
+                
+                similar_result = self._find_similar_sentence(sentence)
+                
+                if similar_result:
+                    similar_sentence, similarity_score, position = similar_result
+                    
+                    # Found a duplicate!
+                    duplicate_preview = sentence[:100]
+                    
+                    # Log at WARNING level with all required details
+                    logger.warning(
+                        f"Content-level duplicate detected: '{duplicate_preview}' "
+                        f"(similarity: {similarity_score:.3f}, position: {position})",
+                        extra={
+                            "session_id": session_id,
+                            "duplicate_preview": duplicate_preview,
+                            "similar_sentence_preview": similar_sentence[:100],
+                            "similarity_score": similarity_score,
+                            "position": position,
+                            "threshold": self.content_similarity_threshold,
+                            "timestamp": datetime.now().isoformat()
+                        }
+                    )
+                    
+                    return (True, duplicate_preview)
+            
+            # No duplicates found
+            return (False, None)
+            
+        except Exception as e:
+            # Log at ERROR level for detection failures
+            logger.error(
+                f"Content duplicate detection failed: {type(e).__name__}: {e}",
+                extra={
+                    "session_id": session_id,
+                    "new_text_preview": new_text[:100] if new_text else "",
+                    "error_type": type(e).__name__,
+                    "timestamp": datetime.now().isoformat()
+                },
+                exc_info=True
+            )
+            # Graceful degradation: allow content through
+            return (False, None)
+    
+    def add_content(self, text: str) -> None:
+        """
+        Add text to accumulated content tracking.
+        
+        Args:
+            text: The text to add to tracking
+        """
+        try:
+            if not text or not text.strip():
+                return
+            
+            # Split text into sentences and add to accumulated sentences
+            sentences = self._split_into_sentences(text)
+            
+            for sentence in sentences:
+                if sentence and len(sentence) >= 10:  # Only track substantial sentences
+                    self.accumulated_sentences.append(sentence)
+            
+            # Maintain sliding window of last N sentences for performance
+            if len(self.accumulated_sentences) > self.sentence_window_size:
+                self.accumulated_sentences = self.accumulated_sentences[-self.sentence_window_size:]
+            
+            logger.debug(
+                f"Added content to tracking: {len(sentences)} sentences, "
+                f"total accumulated: {len(self.accumulated_sentences)}"
+            )
+            
+        except Exception as e:
+            # Log error but don't crash - graceful degradation
+            logger.error(
+                f"Failed to add content to tracking: {type(e).__name__}: {e}",
+                exc_info=True
+            )

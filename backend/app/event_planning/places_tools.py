@@ -1,7 +1,7 @@
 """Agent tools for Google Places integration."""
 
 from typing import Optional
-from app.event_planning.google_places_service import GooglePlacesService
+from backend.app.event_planning.google_places_service import GooglePlacesService
 
 
 # Global service instance

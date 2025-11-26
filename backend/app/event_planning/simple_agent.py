@@ -12,8 +12,8 @@ Get an API key at: https://aistudio.google.com/app/apikey
 
 import os
 from google.adk.agents import Agent
-from app.event_planning.agent_tools import EVENT_PLANNING_TOOLS
-from app.event_planning.places_tools import PLACES_TOOLS
+from backend.app.event_planning.agent_tools import EVENT_PLANNING_TOOLS
+from backend.app.event_planning.places_tools import PLACES_TOOLS
 
 
 instruction = """You are a friendly AI assistant that helps people plan events with their friends.

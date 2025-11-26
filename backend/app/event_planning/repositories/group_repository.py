@@ -1,14 +1,14 @@
 """Friend group repository implementation."""
 
 from typing import Dict, List
-from app.event_planning.models.group import FriendGroup
-from app.event_planning.repositories.base import JsonFileRepository
-from app.event_planning.exceptions import (
+from backend.app.event_planning.models.group import FriendGroup
+from backend.app.event_planning.repositories.base import JsonFileRepository
+from backend.app.event_planning.exceptions import (
     GroupNotFoundError,
     AlreadyMemberError,
     NotMemberError,
 )
-from app.event_planning.error_logging import log_business_logic_error
+from backend.app.event_planning.error_logging import log_business_logic_error
 
 
 class GroupRepository(JsonFileRepository[FriendGroup]):

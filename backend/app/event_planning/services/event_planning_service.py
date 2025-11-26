@@ -8,19 +8,19 @@ from datetime import datetime, timedelta
 from typing import List, Optional, Tuple
 from uuid import uuid4
 
-from app.event_planning.models.user import User, PreferenceProfile, AvailabilityWindow
-from app.event_planning.models.group import FriendGroup
-from app.event_planning.models.event import Event
-from app.event_planning.models.suggestion import EventSuggestion
-from app.event_planning.models.feedback import EventFeedback
-from app.event_planning.repositories.user_repository import UserRepository
-from app.event_planning.repositories.group_repository import GroupRepository
-from app.event_planning.repositories.event_repository import EventRepository
-from app.event_planning.repositories.feedback_repository import FeedbackRepository
-from app.event_planning.services.event_service import EventService
-from app.event_planning.services.recommendation_engine import RecommendationEngine, SearchFilters
-from app.event_planning.services.scheduling_optimizer import SchedulingOptimizer, TimeSlot
-from app.event_planning.services.feedback_processor import FeedbackProcessor
+from backend.app.event_planning.models.user import User, PreferenceProfile, AvailabilityWindow
+from backend.app.event_planning.models.group import FriendGroup
+from backend.app.event_planning.models.event import Event
+from backend.app.event_planning.models.suggestion import EventSuggestion
+from backend.app.event_planning.models.feedback import EventFeedback
+from backend.app.event_planning.repositories.user_repository import UserRepository
+from backend.app.event_planning.repositories.group_repository import GroupRepository
+from backend.app.event_planning.repositories.event_repository import EventRepository
+from backend.app.event_planning.repositories.feedback_repository import FeedbackRepository
+from backend.app.event_planning.services.event_service import EventService
+from backend.app.event_planning.services.recommendation_engine import RecommendationEngine, SearchFilters
+from backend.app.event_planning.services.scheduling_optimizer import SchedulingOptimizer, TimeSlot
+from backend.app.event_planning.services.feedback_processor import FeedbackProcessor
 
 
 class EventPlanningService:

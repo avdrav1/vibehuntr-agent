@@ -114,15 +114,17 @@ deploy_backend() {
     
     # Construct Firebase Hosting URLs for CORS
     # Requirements: 1.3 (Firebase Hosting Migration)
-    FIREBASE_CORS_ORIGINS="https://${PROJECT_ID}.web.app,https://${PROJECT_ID}.firebaseapp.com"
+    # Custom site "vibehuntr" is used, so include both custom and project URLs
+    FIREBASE_CORS_ORIGINS="https://vibehuntr.web.app,https://${PROJECT_ID}.web.app,https://${PROJECT_ID}.firebaseapp.com"
     
     # Deploy to Cloud Run
+    # Use ^;^ delimiter syntax to allow commas in CORS_ORIGINS value
     gcloud run deploy "${BACKEND_SERVICE}" \
         --source . \
         --platform managed \
         --region "${REGION}" \
         --allow-unauthenticated \
-        --set-env-vars PROJECT_ID="${PROJECT_ID}",LOCATION="${REGION}",ENVIRONMENT=production,FIREBASE_PROJECT_ID="${PROJECT_ID}",CORS_ORIGINS="${FIREBASE_CORS_ORIGINS}" \
+        --set-env-vars "^;^PROJECT_ID=${PROJECT_ID};LOCATION=${REGION};ENVIRONMENT=production;FIREBASE_PROJECT_ID=${PROJECT_ID};CORS_ORIGINS=${FIREBASE_CORS_ORIGINS}" \
         --set-secrets GEMINI_API_KEY=GEMINI_API_KEY:latest,GOOGLE_PLACES_API_KEY=GOOGLE_PLACES_API_KEY:latest \
         --memory 2Gi \
         --cpu 2 \
@@ -140,6 +142,7 @@ deploy_backend() {
     
     print_info "Backend deployed successfully at: ${BACKEND_URL}"
     print_info "CORS configured for Firebase Hosting URLs:"
+    print_info "  - https://vibehuntr.web.app"
     print_info "  - https://${PROJECT_ID}.web.app"
     print_info "  - https://${PROJECT_ID}.firebaseapp.com"
     
@@ -169,8 +172,8 @@ deploy_frontend() {
         --project "${PROJECT_ID}" \
         --non-interactive
     
-    # Construct Firebase Hosting URL
-    FRONTEND_URL="https://${PROJECT_ID}.web.app"
+    # Construct Firebase Hosting URL (using custom site "vibehuntr")
+    FRONTEND_URL="https://vibehuntr.web.app"
     
     print_info "Frontend deployed successfully"
     print_info "Frontend URL: ${FRONTEND_URL}"
@@ -263,6 +266,7 @@ print_summary() {
     echo ""
     echo "Backend URL: ${VITE_API_URL}"
     echo "CORS Origins: Configured for Firebase Hosting"
+    echo "  ✓ https://vibehuntr.web.app"
     echo "  ✓ https://${PROJECT_ID}.web.app"
     echo "  ✓ https://${PROJECT_ID}.firebaseapp.com"
     echo ""

@@ -4,7 +4,7 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from app.event_planning.agent_tools import (
+from backend.app.event_planning.agent_tools import (
     create_user_tool,
     list_users_tool,
     create_group_tool,
