@@ -163,7 +163,8 @@ mkdir -p logs
 
 # Start backend
 print_info "Starting backend server..."
-uv run uvicorn backend.app.main:app --reload --port 8000 > logs/backend.log 2>&1 &
+PROJECT_ROOT=$(pwd)
+(cd backend && uv run uvicorn app.main:app --reload --port 8000 > "$PROJECT_ROOT/logs/backend.log" 2>&1) &
 BACKEND_PID=$!
 echo $BACKEND_PID > logs/backend.pid
 
