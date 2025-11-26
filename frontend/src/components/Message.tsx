@@ -1,5 +1,6 @@
 import type { Message as MessageType } from '../types';
 import { useMemo } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { extractURLs } from '../utils/urlExtractor';
 import { LinkPreview } from './LinkPreview';
 
@@ -166,10 +167,47 @@ export function Message({ message, isStreaming = false, sessionId = 'default' }:
 
       {/* Message content */}
       <div 
-        className="text-sm leading-relaxed whitespace-pre-wrap break-words"
+        className="text-sm leading-relaxed break-words prose prose-invert prose-sm max-w-none"
         style={{ color: 'var(--color-text-secondary)' }}
       >
-        {message.content}
+        {isUser ? (
+          // User messages rendered as plain text
+          <span className="whitespace-pre-wrap">{message.content}</span>
+        ) : (
+          // Assistant messages rendered as markdown
+          <ReactMarkdown
+            components={{
+              // Style links
+              a: ({ href, children }) => (
+                <a 
+                  href={href} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-purple-400 hover:text-purple-300 underline"
+                >
+                  {children}
+                </a>
+              ),
+              // Style lists
+              ul: ({ children }) => (
+                <ul className="list-disc list-inside my-2 space-y-1">{children}</ul>
+              ),
+              ol: ({ children }) => (
+                <ol className="list-decimal list-inside my-2 space-y-1">{children}</ol>
+              ),
+              // Style paragraphs
+              p: ({ children }) => (
+                <p className="my-2">{children}</p>
+              ),
+              // Style bold text
+              strong: ({ children }) => (
+                <strong className="font-semibold text-white">{children}</strong>
+              ),
+            }}
+          >
+            {message.content}
+          </ReactMarkdown>
+        )}
         {/* Streaming cursor indicator (Requirements 7.3, 7.4) */}
         {isStreaming && message.role === 'assistant' && (
           <span 

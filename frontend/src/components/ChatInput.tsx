@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import type { KeyboardEvent } from 'react';
 
 interface ChatInputProps {
@@ -18,15 +18,33 @@ export function ChatInput({ onSend, disabled = false, isLoading = false }: ChatI
   const [input, setInput] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Auto-focus the input when component mounts
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  }, []);
+
+  // Refocus when input becomes enabled after being disabled
+  useEffect(() => {
+    if (!disabled && textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  }, [disabled]);
+
   const handleSend = () => {
     const trimmedInput = input.trim();
     if (trimmedInput && !disabled) {
       onSend(trimmedInput);
       setInput('');
       
-      // Reset textarea height
+      // Reset textarea height and refocus
       if (textareaRef.current) {
         textareaRef.current.style.height = 'auto';
+        // Refocus the input after sending
+        setTimeout(() => {
+          textareaRef.current?.focus();
+        }, 0);
       }
     }
   };
