@@ -20,8 +20,9 @@ if env_file.exists():
     if "GOOGLE_API_KEY" in os.environ:
         os.environ["GOOGLE_API_KEY"] = os.environ["GOOGLE_API_KEY"]
 
-from app.api import chat, sessions, context, link_preview
-from app.core.config import settings
+from backend.app.api import chat, sessions, context, link_preview
+from backend.app.api import planning_sessions, voting, itinerary, comments, websocket
+from backend.app.core.config import settings
 
 # Configure logging
 logging.basicConfig(
@@ -190,6 +191,11 @@ app.include_router(chat.router)
 app.include_router(sessions.router)
 app.include_router(context.router)
 app.include_router(link_preview.router)
+app.include_router(planning_sessions.router)
+app.include_router(voting.router)
+app.include_router(itinerary.router)
+app.include_router(comments.router)
+app.include_router(websocket.router)
 
 
 @app.get("/health")

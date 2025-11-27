@@ -121,3 +121,29 @@ export type {
   LinkPreviewResponse,
   ExtractedURL
 } from './linkPreview';
+
+/**
+ * Planning session types - re-exported from planningSession.ts for convenience
+ */
+export type {
+  SessionStatus,
+  VoteType,
+  Participant,
+  PlanningSession,
+  VenueOption,
+  Vote,
+  VoteTally,
+  RankedVenue,
+  ItineraryItem,
+  Comment,
+  SessionSummary,
+  SessionEventType,
+  SessionEvent,
+  CreateSessionRequest,
+  CreateSessionResponse,
+  JoinSessionRequest,
+  JoinSessionResponse,
+  CastVoteRequest,
+  AddToItineraryRequest,
+  AddCommentRequest,
+} from './planningSession';

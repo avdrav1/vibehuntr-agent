@@ -1,0 +1,214 @@
+# Implementation Plan
+
+- [x] 1. Set up data models and core types
+  - [x] 1.1 Create PlanningSession, Participant, and SessionStatus models
+    - Create dataclasses with validation methods in `app/event_planning/models/`
+    - Include `to_dict()`, `from_dict()`, `to_json()`, `from_json()` methods
+    - _Requirements: 5.1, 5.4, 5.5_
+  - [x] 1.2 Write property test for session serialization round-trip
+    - **Property 12: Session serialization round-trip**
+    - **Validates: Requirements 5.4, 5.5**
+  - [x] 1.3 Create VenueOption, Vote, and VoteType models
+    - Define vote types as enum (UPVOTE, DOWNVOTE, NEUTRAL)
+    - Include validation for required fields
+    - _Requirements: 2.1, 2.2_
+  - [x] 1.4 Create ItineraryItem and Comment models
+    - Include timestamp fields for ordering
+    - Add character limit validation for comments (500 chars)
+    - _Requirements: 3.2, 6.1, 6.4_
+  - [x] 1.5 Create SessionSummary model
+    - Include all fields needed for final summary generation
+    - _Requirements: 4.5_
+
+- [x] 2. Implement Planning Session Service
+  - [x] 2.1 Implement session creation with secure invite token generation
+    - Use `secrets.token_urlsafe(32)` for 256-bit tokens
+    - Set default expiry to 72 hours
+    - _Requirements: 1.1_
+  - [x] 2.2 Write property test for invite token uniqueness
+    - **Property 1: Invite token uniqueness**
+    - **Validates: Requirements 1.1**
+  - [x] 2.3 Implement join session via invite token
+    - Validate token exists and not expired/revoked
+    - Create participant record with display name
+    - _Requirements: 1.2, 1.3_
+  - [x] 2.4 Implement get participants and session retrieval
+    - Return participant list with display names
+    - _Requirements: 1.4_
+  - [x] 2.5 Write property test for participant list completeness
+    - **Property 2: Participant list completeness**
+    - **Validates: Requirements 1.4**
+  - [x] 2.6 Implement invite revocation
+    - Mark invite as revoked, preserve existing participants
+    - _Requirements: 1.5_
+  - [x] 2.7 Write property test for invite revocation preserves participants
+    - **Property 3: Invite revocation preserves participants**
+    - **Validates: Requirements 1.5**
+
+- [x] 3. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 4. Implement Vote Manager
+  - [x] 4.1 Implement add venue option
+    - Store venue with Google Places data
+    - _Requirements: 2.1_
+  - [x] 4.2 Implement cast vote with duplicate prevention
+    - Check for existing vote by participant on venue
+    - Update existing vote or create new one
+    - _Requirements: 2.2, 2.3, 2.5_
+  - [x] 4.3 Write property test for vote tally accuracy
+    - **Property 4: Vote tally accuracy**
+    - **Validates: Requirements 2.2, 2.4**
+  - [x] 4.4 Write property test for vote change consistency
+    - **Property 5: Vote change consistency**
+    - **Validates: Requirements 2.3, 2.5**
+  - [x] 4.5 Implement get ranked venues
+    - Sort venues by vote count descending
+    - Handle ties by highlighting them
+    - _Requirements: 4.1, 4.4_
+  - [x] 4.6 Write property test for venue ranking by votes
+    - **Property 10: Venue ranking by votes**
+    - **Validates: Requirements 4.1**
+
+- [x] 5. Implement Itinerary Manager
+  - [x] 5.1 Implement add to itinerary
+    - Add venue with scheduled time
+    - Maintain chronological order
+    - _Requirements: 3.1, 4.2_
+  - [x] 5.2 Implement remove from itinerary
+    - Remove item and update order
+    - _Requirements: 3.3_
+  - [x] 5.3 Write property test for itinerary removal consistency
+    - **Property 7: Itinerary removal consistency**
+    - **Validates: Requirements 3.3**
+  - [x] 5.4 Implement get itinerary with chronological sorting
+    - Return items sorted by scheduled_time ascending
+    - _Requirements: 3.2_
+  - [x] 5.5 Write property test for itinerary chronological ordering
+    - **Property 6: Itinerary chronological ordering**
+    - **Validates: Requirements 3.2**
+
+- [x] 6. Implement Comment Service
+  - [x] 6.1 Implement add comment with validation
+    - Validate 500 character limit
+    - Store with participant name and timestamp
+    - _Requirements: 6.1, 6.4_
+  - [x] 6.2 Implement get comments with chronological ordering
+    - Return comments sorted by created_at ascending
+    - _Requirements: 6.2_
+  - [x] 6.3 Write property test for comment chronological ordering
+    - **Property 13: Comment chronological ordering**
+    - **Validates: Requirements 6.2**
+
+- [x] 7. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 8. Implement Session Finalization
+  - [x] 8.1 Implement finalize session
+    - Set status to FINALIZED
+    - Generate SessionSummary with all required fields
+    - _Requirements: 3.5, 4.3_
+  - [x] 8.2 Write property test for finalization immutability
+    - **Property 9: Finalization immutability**
+    - **Validates: Requirements 3.5**
+  - [x] 8.3 Implement summary generation
+    - Include all venues, times, addresses, participants
+    - Generate shareable URL
+    - _Requirements: 4.5_
+  - [x] 8.4 Write property test for summary completeness
+    - **Property 11: Summary completeness**
+    - **Validates: Requirements 4.5**
+
+- [x] 9. Implement Real-Time Broadcast Service
+  - [x] 9.1 Implement WebSocket connection management
+    - Track connections per session
+    - Handle connect/disconnect events
+    - _Requirements: 3.1_
+  - [x] 9.2 Implement broadcast to session participants
+    - Send events to all connected participants
+    - _Requirements: 3.1, 6.3_
+  - [x] 9.3 Implement state synchronization for reconnection
+    - Return full session state on reconnect
+    - _Requirements: 3.4_
+  - [x] 9.4 Write property test for session state synchronization
+    - **Property 8: Session state synchronization**
+    - **Validates: Requirements 3.4**
+
+- [x] 10. Implement Backend REST API Endpoints
+  - [x] 10.1 Create session endpoints
+    - POST /api/sessions - Create session
+    - GET /api/sessions/{id} - Get session
+    - POST /api/sessions/join/{token} - Join via invite
+    - POST /api/sessions/{id}/revoke - Revoke invite
+    - POST /api/sessions/{id}/finalize - Finalize session
+    - _Requirements: 1.1, 1.2, 1.5, 4.3_
+  - [x] 10.2 Create voting endpoints
+    - POST /api/sessions/{id}/venues - Add venue option
+    - POST /api/sessions/{id}/venues/{venue_id}/vote - Cast vote
+    - GET /api/sessions/{id}/venues - Get venues with votes
+    - _Requirements: 2.1, 2.2_
+  - [x] 10.3 Create itinerary endpoints
+    - POST /api/sessions/{id}/itinerary - Add to itinerary
+    - DELETE /api/sessions/{id}/itinerary/{item_id} - Remove from itinerary
+    - GET /api/sessions/{id}/itinerary - Get itinerary
+    - _Requirements: 3.2, 4.2_
+  - [x] 10.4 Create comment endpoints
+    - POST /api/sessions/{id}/venues/{venue_id}/comments - Add comment
+    - GET /api/sessions/{id}/venues/{venue_id}/comments - Get comments
+    - _Requirements: 6.1, 6.2_
+  - [x] 10.5 Create WebSocket endpoint
+    - WS /api/sessions/{id}/ws - Real-time connection
+    - _Requirements: 3.1, 3.4_
+
+- [x] 11. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 12. Implement Frontend Components
+  - [x] 12.1 Create PlanningSession context and hooks
+    - useSession hook for session state
+    - useWebSocket hook for real-time updates
+    - _Requirements: 3.1, 3.4_
+  - [x] 12.2 Create InviteLink component
+    - Display shareable link with copy button
+    - Show expiration status
+    - _Requirements: 1.1_
+  - [x] 12.3 Create JoinSession page
+    - Form for display name entry
+    - Handle expired/revoked links
+    - _Requirements: 1.2, 1.3_
+  - [x] 12.4 Create ParticipantList component
+    - Display all participants with names
+    - Highlight organizer
+    - _Requirements: 1.4_
+  - [x] 12.5 Create VenueCard component with voting
+    - Display venue details from Google Places
+    - Vote buttons (upvote/downvote)
+    - Show vote count and voters
+    - _Requirements: 2.1, 2.2, 2.4_
+  - [x] 12.6 Create ItineraryView component
+    - Display items in chronological order
+    - Allow organizer to add/remove items
+    - _Requirements: 3.2, 4.2_
+  - [x] 12.7 Create CommentSection component
+    - Display comments chronologically
+    - Add comment form with character counter
+    - _Requirements: 6.1, 6.2_
+  - [x] 12.8 Create SessionSummary component
+    - Display finalized itinerary
+    - Share button for summary URL
+    - _Requirements: 4.5_
+
+- [x] 13. Implement Firestore Persistence
+  - [x] 13.1 Create Firestore repository for sessions
+    - CRUD operations for PlanningSession
+    - Index on invite_token for lookups
+    - _Requirements: 5.1, 5.2_
+  - [x] 13.2 Create Firestore repository for votes and comments
+    - Store votes and comments as subcollections
+    - _Requirements: 2.2, 6.1_
+  - [x] 13.3 Implement session archival
+    - Archive sessions inactive for 30 days
+    - _Requirements: 5.3_
+
+- [x] 14. Final Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
