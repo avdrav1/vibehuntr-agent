@@ -7,7 +7,6 @@
  * Requirements: 3.2, 4.2
  */
 
-import React from 'react';
 import type { ItineraryItem } from '../types/planningSession';
 
 interface ItineraryViewProps {

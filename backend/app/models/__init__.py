@@ -1,6 +1,6 @@
 """Data models for API requests and responses."""
 
-from app.models.schemas import (
+from .schemas import (
     Message,
     ChatRequest,
     ChatResponse,

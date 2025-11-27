@@ -20,9 +20,9 @@ if env_file.exists():
     if "GOOGLE_API_KEY" in os.environ:
         os.environ["GOOGLE_API_KEY"] = os.environ["GOOGLE_API_KEY"]
 
-from app.api import chat, sessions, context, link_preview
-from app.api import planning_sessions, voting, itinerary, comments, websocket
-from app.core.config import settings
+from .api import chat, sessions, context, link_preview
+from .api import planning_sessions, voting, itinerary, comments, websocket
+from .core.config import settings
 
 # Configure logging
 logging.basicConfig(

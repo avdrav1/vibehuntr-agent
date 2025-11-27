@@ -13,14 +13,14 @@ from typing import AsyncGenerator
 from fastapi import APIRouter, HTTPException, Query
 from sse_starlette.sse import EventSourceResponse
 
-from app.models.schemas import (
+from ..models.schemas import (
     ChatRequest,
     ChatResponse,
     ErrorResponse,
     StreamEvent,
 )
-from app.services.session_manager import session_manager
-from app.services.agent_service import get_agent_service, AgentInvocationError
+from ..services.session_manager import session_manager
+from ..services.agent_service import get_agent_service, AgentInvocationError
 
 
 # Configure logging

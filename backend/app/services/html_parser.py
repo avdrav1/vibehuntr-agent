@@ -12,7 +12,7 @@ from urllib.parse import urljoin, urlparse
 
 from bs4 import BeautifulSoup
 
-from app.models.link_preview import LinkMetadata
+from ..models.link_preview import LinkMetadata
 
 
 class HTMLParser:

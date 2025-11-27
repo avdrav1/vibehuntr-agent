@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/planning-sessions", tags=["comments"])
 
 # Import shared service instances
-from app.services.group_coordination import (
+from ..services.group_coordination import (
     comment_service as _comment_service,
     session_service as _session_service,
 )

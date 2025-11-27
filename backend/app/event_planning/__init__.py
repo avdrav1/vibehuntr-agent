@@ -1,6 +1,6 @@
 """Event Planning Agent module."""
 
-from app.event_planning.exceptions import (
+from .exceptions import (
     EventPlanningError,
     ValidationError,
     BusinessLogicError,

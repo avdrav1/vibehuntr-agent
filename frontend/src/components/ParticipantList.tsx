@@ -7,7 +7,6 @@
  * Requirements: 1.4
  */
 
-import React from 'react';
 import type { Participant } from '../types/planningSession';
 
 interface ParticipantListProps {

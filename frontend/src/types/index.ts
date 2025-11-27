@@ -153,7 +153,7 @@ export type {
   RankedVenue,
   ItineraryItem,
   Comment,
-  SessionSummary,
+  SessionSummary as PlanningSessionSummary,
   SessionEventType,
   SessionEvent,
   CreateSessionRequest,

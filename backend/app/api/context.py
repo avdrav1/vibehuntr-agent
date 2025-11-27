@@ -25,7 +25,7 @@ if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
     print(f"DEBUG context.py: Added project_root to sys.path")
 
-from app.models.schemas import (
+from ..models.schemas import (
     ContextResponse,
     StatusResponse,
     ErrorResponse,

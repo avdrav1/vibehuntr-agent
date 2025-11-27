@@ -25,10 +25,11 @@ const MAX_COMMENT_LENGTH = 500;
  */
 export function CommentSection({
   comments,
-  venueId,
+  venueId: _venueId,
   currentParticipantId,
   onAddComment,
 }: CommentSectionProps) {
+  // venueId available as _venueId for future use
   const [commentText, setCommentText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);

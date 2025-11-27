@@ -5,7 +5,7 @@
  * Requirements: 1.1
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import type { PlanningSession } from '../types/planningSession';
 
 interface InviteLinkProps {

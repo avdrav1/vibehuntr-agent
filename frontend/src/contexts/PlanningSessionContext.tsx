@@ -8,7 +8,8 @@
  */
 
 import React, { createContext, useContext, useEffect, useCallback } from 'react';
-import { useSession, UseSessionReturn } from '../hooks/useSession';
+import { useSession } from '../hooks/useSession';
+import type { UseSessionReturn } from '../hooks/useSession';
 import { useWebSocket } from '../hooks/useWebSocket';
 import type { SessionEvent } from '../types/planningSession';
 

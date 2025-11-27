@@ -3,7 +3,7 @@
 import logging
 import traceback
 from typing import Any, Dict, Optional
-from app.event_planning.exceptions import EventPlanningError
+from .exceptions import EventPlanningError
 
 
 # Configure logger

@@ -1,8 +1,8 @@
 """Event repository implementation."""
 
 from typing import Dict, List
-from app.event_planning.models.event import Event
-from app.event_planning.repositories.base import JsonFileRepository
+from ..models.event import Event
+from .base import JsonFileRepository
 
 
 class EventRepository(JsonFileRepository[Event]):

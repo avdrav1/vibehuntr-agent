@@ -1,15 +1,15 @@
 """User repository implementation."""
 
 from typing import Dict, List, Optional
-from app.event_planning.models.user import User, PreferenceProfile, AvailabilityWindow
-from app.event_planning.repositories.base import JsonFileRepository
-from app.event_planning.exceptions import (
+from ..models.user import User, PreferenceProfile, AvailabilityWindow
+from .base import JsonFileRepository
+from ..exceptions import (
     UserNotFoundError,
     InvalidPreferenceDataError,
     InvalidAvailabilityDataError,
     ValidationError,
 )
-from app.event_planning.error_logging import log_business_logic_error, log_validation_error
+from ..error_logging import log_business_logic_error, log_validation_error
 
 
 class UserRepository(JsonFileRepository[User]):

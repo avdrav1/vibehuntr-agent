@@ -5,7 +5,7 @@ from datetime import timedelta, datetime
 from typing import Dict, Optional
 import json
 
-from app.event_planning.models.event import Location
+from .event import Location
 
 
 @dataclass

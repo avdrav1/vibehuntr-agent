@@ -7,7 +7,7 @@
  * Requirements: 2.1, 2.2, 2.4
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import type { RankedVenue, VoteType } from '../types/planningSession';
 
 interface VenueCardProps {

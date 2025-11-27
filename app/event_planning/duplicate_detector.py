@@ -485,14 +485,24 @@ class DuplicateDetector:
             if not text or not text.strip():
                 return []
             
-            # Split on sentence-ending punctuation followed by whitespace
-            # Pattern: [.!?]+ followed by whitespace
-            sentences = re.split(r'[.!?]+\s+', text)
+            # Split on multiple patterns:
+            # 1. Sentence-ending punctuation followed by whitespace: [.!?]+\s+
+            # 2. Newlines (to handle lists and paragraphs): \n+
+            # 3. Numbered list items: \d+\.\s+ (but keep the number)
+            # Combined pattern splits on sentence endings OR double newlines
+            sentences = re.split(r'[.!?]+\s+|\n\n+', text)
             
-            # Filter out empty strings and strip whitespace
-            sentences = [s.strip() for s in sentences if s.strip()]
+            # Further split on single newlines to catch list items
+            result = []
+            for sentence in sentences:
+                # Split on single newlines too
+                lines = sentence.split('\n')
+                for line in lines:
+                    stripped = line.strip()
+                    if stripped:
+                        result.append(stripped)
             
-            return sentences
+            return result
             
         except Exception as e:
             # Fall back to paragraph splitting on error
@@ -594,6 +604,9 @@ class DuplicateDetector:
         Check if new_text contains content similar to accumulated response.
         
         This is the main entry point for content-level duplicate detection.
+        Uses multiple strategies:
+        1. Block-level: Check if the new text block is already in accumulated text
+        2. Sentence-level: Check individual sentences for similarity
         
         Args:
             new_text: The new text chunk to check
@@ -620,6 +633,52 @@ class DuplicateDetector:
                 logger.debug("Skipping duplicate detection for first chunk (no accumulated sentences)")
                 return (False, None)
             
+            # Strategy 1: Block-level duplicate detection
+            # Check if a significant portion of new_text already exists in accumulated text
+            # This catches cases where the agent sends the same block twice
+            if len(new_text) >= 50:  # Only check substantial blocks
+                # Normalize text for comparison (remove extra whitespace)
+                normalized_new = ' '.join(new_text.split())
+                accumulated_text_joined = ' '.join(self.accumulated_sentences)
+                
+                # Check if the new text block is already in accumulated text
+                if normalized_new in accumulated_text_joined:
+                    duplicate_preview = new_text[:100]
+                    logger.warning(
+                        f"Block-level duplicate detected: '{duplicate_preview}' "
+                        f"(exact substring match in accumulated text)",
+                        extra={
+                            "session_id": session_id,
+                            "duplicate_preview": duplicate_preview,
+                            "block_length": len(new_text),
+                            "timestamp": datetime.now().isoformat()
+                        }
+                    )
+                    return (True, duplicate_preview)
+                
+                # Also check if accumulated text contains a significant portion of new text
+                # This catches partial duplicates
+                if len(normalized_new) >= 100:
+                    # Check first half and second half separately
+                    half_len = len(normalized_new) // 2
+                    first_half = normalized_new[:half_len]
+                    second_half = normalized_new[half_len:]
+                    
+                    if first_half in accumulated_text_joined and second_half in accumulated_text_joined:
+                        duplicate_preview = new_text[:100]
+                        logger.warning(
+                            f"Partial block duplicate detected: '{duplicate_preview}' "
+                            f"(both halves found in accumulated text)",
+                            extra={
+                                "session_id": session_id,
+                                "duplicate_preview": duplicate_preview,
+                                "block_length": len(new_text),
+                                "timestamp": datetime.now().isoformat()
+                            }
+                        )
+                        return (True, duplicate_preview)
+            
+            # Strategy 2: Sentence-level duplicate detection
             # Split new text into sentences
             new_sentences = self._split_into_sentences(new_text)
             

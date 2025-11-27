@@ -8,7 +8,7 @@ import time
 from collections import OrderedDict
 from typing import Optional
 
-from app.models.link_preview import LinkMetadata
+from ..models.link_preview import LinkMetadata
 
 
 class MetadataCache:

@@ -5,7 +5,7 @@
  * Requirements: 4.5
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import type { SessionSummary as SessionSummaryType } from '../types/planningSession';
 
 interface SessionSummaryProps {

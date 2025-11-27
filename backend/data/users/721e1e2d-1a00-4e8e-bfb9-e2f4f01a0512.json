@@ -1,0 +1,15 @@
+{
+  "id": "721e1e2d-1a00-4e8e-bfb9-e2f4f01a0512",
+  "name": "Ringo Starr",
+  "email": "ringo@gmail.com",
+  "preference_profile": {
+    "user_id": "721e1e2d-1a00-4e8e-bfb9-e2f4f01a0512",
+    "activity_preferences": {},
+    "budget_max": null,
+    "location_preferences": [],
+    "dietary_restrictions": [],
+    "accessibility_needs": [],
+    "updated_at": "2025-11-27T07:35:15.786792"
+  },
+  "availability_windows": []
+}
