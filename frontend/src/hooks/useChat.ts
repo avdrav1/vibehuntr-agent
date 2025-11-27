@@ -8,13 +8,15 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { Message, StreamEvent, ConversationContext } from '../types';
+import type { Message, StreamEvent, ConversationContext, SessionSummary } from '../types';
 import {
   createSession,
   createStreamingConnection,
   clearSession as clearSessionAPI,
   getSessionMessages,
   fetchContext,
+  getSessions,
+  deleteSession as deleteSessionAPI,
 } from '../services/api';
 
 export interface UseChatReturn {
@@ -26,10 +28,19 @@ export interface UseChatReturn {
   error: string | null;
   context: ConversationContext | null;
   contextRefreshTrigger: number;
+  failedMessageIndices: Set<number>;
+  editingMessageIndex: number | null;
+  sessions: SessionSummary[];
   sendMessage: (content: string) => Promise<void>;
   clearSession: () => Promise<void>;
   retryLastMessage: () => Promise<void>;
+  retryMessage: (messageIndex: number) => Promise<void>;
   dismissError: () => void;
+  startEditMessage: (messageIndex: number) => void;
+  saveEditMessage: (messageIndex: number, newContent: string) => Promise<void>;
+  cancelEditMessage: () => void;
+  loadSession: (sessionId: string) => Promise<void>;
+  deleteSession: (sessionId: string) => Promise<void>;
 }
 
 /**
@@ -53,6 +64,15 @@ export function useChat(): UseChatReturn {
   const [error, setError] = useState<string | null>(null);
   const [context, setContext] = useState<ConversationContext | null>(null); // Requirement 11.4: Context state
   const [contextRefreshTrigger, setContextRefreshTrigger] = useState<number>(0); // Requirement 11.4: Trigger context refresh
+  
+  // Retry state tracking (Requirement 3.1)
+  const [failedMessageIndices, setFailedMessageIndices] = useState<Set<number>>(new Set());
+  
+  // Edit state tracking (Requirement 4.2)
+  const [editingMessageIndex, setEditingMessageIndex] = useState<number | null>(null);
+  
+  // Session list state (Requirement 1.1)
+  const [sessions, setSessions] = useState<SessionSummary[]>([]);
 
   // Ref to track the current EventSource connection
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -78,11 +98,27 @@ export function useChat(): UseChatReturn {
   }, []);
 
   /**
+   * Fetch all sessions from the backend (Requirement 1.1)
+   */
+  const fetchSessions = useCallback(async () => {
+    try {
+      const sessionList = await getSessions();
+      setSessions(sessionList);
+    } catch (err) {
+      console.error('Failed to fetch sessions:', err);
+      // Don't show error to user for session list failures
+    }
+  }, []);
+
+  /**
    * Initialize session on mount (Requirement 3.1)
    */
   useEffect(() => {
     const initializeSession = async () => {
       try {
+        // Fetch existing sessions first (Requirement 1.1)
+        await fetchSessions();
+        
         const newSessionId = await createSession();
         setSessionId(newSessionId);
         
@@ -115,7 +151,7 @@ export function useChat(): UseChatReturn {
         eventSourceRef.current = null;
       }
     };
-  }, [updateContext]);
+  }, [updateContext, fetchSessions]);
 
   /**
    * Update context when contextRefreshTrigger changes (Requirement 11.4)
@@ -155,6 +191,37 @@ export function useChat(): UseChatReturn {
         timestamp: new Date().toISOString(),
       };
       setMessages(prev => [...prev, userMessage]);
+
+      // Update session in the list (Requirement 1.3, 1.4)
+      // If this is the first message, update the preview
+      setSessions(prev => {
+        const existingIndex = prev.findIndex(s => s.id === sessionId);
+        if (existingIndex >= 0) {
+          // Update existing session
+          const updated = [...prev];
+          const existing = updated[existingIndex];
+          // Only update preview if it's empty (first message)
+          const newPreview = existing.preview || content.trim().substring(0, 100);
+          updated[existingIndex] = {
+            ...existing,
+            preview: newPreview,
+            timestamp: new Date().toISOString(),
+            messageCount: existing.messageCount + 1,
+          };
+          // Move to top of list
+          const [session] = updated.splice(existingIndex, 1);
+          return [session, ...updated];
+        } else {
+          // Add new session to top
+          const newSession: SessionSummary = {
+            id: sessionId,
+            preview: content.trim().substring(0, 100),
+            timestamp: new Date().toISOString(),
+            messageCount: 1,
+          };
+          return [newSession, ...prev];
+        }
+      });
 
       // Start loading state (Requirement 7.5: Show loading indicator while waiting for first token)
       setIsLoading(true);
@@ -212,17 +279,29 @@ export function useChat(): UseChatReturn {
             // Trigger context refresh after message is complete (Requirement 11.4)
             setContextRefreshTrigger(prev => prev + 1);
           } else if (data.type === 'error') {
-            // Handle error from stream (Requirement 8.2)
+            // Handle error from stream (Requirement 8.2, 3.1)
             const errorMsg = data.message || 'The agent encountered an error while processing your request.';
             setError(errorMsg);
             setIsLoading(false);
             setIsStreaming(false);
             
-            // Remove the empty assistant message on error
+            // Mark the user message as failed and track its index (Requirement 3.1)
             setMessages(prev => {
               const updated = [...prev];
+              // Remove the empty assistant message on error
               if (updated.length > 0 && updated[updated.length - 1].role === 'assistant' && !updated[updated.length - 1].content) {
                 updated.pop();
+              }
+              // Mark the last user message as failed
+              const userMsgIndex = updated.length - 1;
+              if (userMsgIndex >= 0 && updated[userMsgIndex].role === 'user') {
+                updated[userMsgIndex] = {
+                  ...updated[userMsgIndex],
+                  status: 'failed',
+                  error: errorMsg,
+                };
+                // Track failed message index
+                setFailedMessageIndices(prev => new Set(prev).add(userMsgIndex));
               }
               return updated;
             });
@@ -232,15 +311,27 @@ export function useChat(): UseChatReturn {
           }
         } catch (err) {
           console.error('Failed to parse SSE message:', err);
-          setError('Unable to process the server response. Please try again.');
+          const errorMsg = 'Unable to process the server response. Please try again.';
+          setError(errorMsg);
           setIsLoading(false);
           setIsStreaming(false);
           
-          // Remove the empty assistant message on error
+          // Mark the user message as failed and track its index (Requirement 3.1)
           setMessages(prev => {
             const updated = [...prev];
+            // Remove the empty assistant message on error
             if (updated.length > 0 && updated[updated.length - 1].role === 'assistant' && !updated[updated.length - 1].content) {
               updated.pop();
+            }
+            // Mark the last user message as failed
+            const userMsgIndex = updated.length - 1;
+            if (userMsgIndex >= 0 && updated[userMsgIndex].role === 'user') {
+              updated[userMsgIndex] = {
+                ...updated[userMsgIndex],
+                status: 'failed',
+                error: errorMsg,
+              };
+              setFailedMessageIndices(prev => new Set(prev).add(userMsgIndex));
             }
             return updated;
           });
@@ -250,19 +341,31 @@ export function useChat(): UseChatReturn {
         }
       };
 
-      // Handle connection errors (Requirement 8.1, 7.5: Show connection status)
+      // Handle connection errors (Requirement 8.1, 7.5, 3.1: Show connection status)
       eventSource.onerror = () => {
         console.error('SSE connection error');
-        setError('Connection lost. Please check your internet connection and try again.');
+        const errorMsg = 'Connection lost. Please check your internet connection and try again.';
+        setError(errorMsg);
         setIsLoading(false);
         setIsStreaming(false);
         setIsConnected(false); // Update connection status
         
-        // Remove the empty assistant message on error
+        // Mark the user message as failed and track its index (Requirement 3.1)
         setMessages(prev => {
           const updated = [...prev];
+          // Remove the empty assistant message on error
           if (updated.length > 0 && updated[updated.length - 1].role === 'assistant' && !updated[updated.length - 1].content) {
             updated.pop();
+          }
+          // Mark the last user message as failed
+          const userMsgIndex = updated.length - 1;
+          if (userMsgIndex >= 0 && updated[userMsgIndex].role === 'user') {
+            updated[userMsgIndex] = {
+              ...updated[userMsgIndex],
+              status: 'failed',
+              error: errorMsg,
+            };
+            setFailedMessageIndices(prev => new Set(prev).add(userMsgIndex));
           }
           return updated;
         });
@@ -272,7 +375,7 @@ export function useChat(): UseChatReturn {
       };
 
     } catch (err) {
-      // Provide user-friendly error messages (Requirement 8.1)
+      // Provide user-friendly error messages (Requirement 8.1, 3.1)
       let errorMessage = 'Unable to send your message. Please try again.';
       
       if (err instanceof Error) {
@@ -289,11 +392,22 @@ export function useChat(): UseChatReturn {
       setIsLoading(false);
       setIsStreaming(false);
       
-      // Remove the empty assistant message on error
+      // Mark the user message as failed and track its index (Requirement 3.1)
       setMessages(prev => {
         const updated = [...prev];
+        // Remove the empty assistant message on error
         if (updated.length > 0 && updated[updated.length - 1].role === 'assistant' && !updated[updated.length - 1].content) {
           updated.pop();
+        }
+        // Mark the last user message as failed
+        const userMsgIndex = updated.length - 1;
+        if (userMsgIndex >= 0 && updated[userMsgIndex].role === 'user') {
+          updated[userMsgIndex] = {
+            ...updated[userMsgIndex],
+            status: 'failed',
+            error: errorMessage,
+          };
+          setFailedMessageIndices(prev => new Set(prev).add(userMsgIndex));
         }
         return updated;
       });
@@ -303,7 +417,7 @@ export function useChat(): UseChatReturn {
   }, [sessionId, isLoading]);
 
   /**
-   * Clear the current session and start a new one (Requirement 3.5)
+   * Clear the current session and start a new one (Requirement 3.5, 1.3)
    */
   const clearSession = useCallback(async () => {
     try {
@@ -324,12 +438,23 @@ export function useChat(): UseChatReturn {
       const newSessionId = await createSession();
       setSessionId(newSessionId);
 
-      // Clear messages, context, and last message ref
+      // Add new session to top of list (Requirement 1.3)
+      const newSessionSummary: SessionSummary = {
+        id: newSessionId,
+        preview: '',
+        timestamp: new Date().toISOString(),
+        messageCount: 0,
+      };
+      setSessions(prev => [newSessionSummary, ...prev]);
+
+      // Clear messages, context, failed indices, and last message ref
       setMessages([]);
       setContext(null);
       setIsLoading(false);
       setIsStreaming(false);
       setIsConnected(true);
+      setFailedMessageIndices(new Set());
+      setEditingMessageIndex(null);
       lastUserMessageRef.current = null;
       
       // Fetch context for new session (Requirement 11.4)
@@ -347,7 +472,7 @@ export function useChat(): UseChatReturn {
       setError(errorMessage);
       console.error('Failed to clear session:', err);
     }
-  }, [sessionId]);
+  }, [sessionId, updateContext]);
 
   /**
    * Retry the last message that failed (Requirement 8.5)
@@ -370,11 +495,189 @@ export function useChat(): UseChatReturn {
   }, [sendMessage]);
 
   /**
+   * Retry a specific failed message by index (Requirement 3.2, 3.3)
+   * 
+   * @param messageIndex - The index of the failed user message to retry
+   */
+  const retryMessage = useCallback(async (messageIndex: number) => {
+    // Get the message content at the specified index
+    const messageToRetry = messages[messageIndex];
+    
+    if (!messageToRetry || messageToRetry.role !== 'user') {
+      console.error('Cannot retry: Invalid message index or not a user message');
+      return;
+    }
+    
+    const contentToRetry = messageToRetry.content;
+    
+    // Remove the failed message from tracking (Requirement 3.3)
+    setFailedMessageIndices(prev => {
+      const updated = new Set(prev);
+      updated.delete(messageIndex);
+      return updated;
+    });
+    
+    // Remove the failed user message and any subsequent messages
+    setMessages(prev => prev.slice(0, messageIndex));
+    
+    // Clear any existing error
+    setError(null);
+    
+    // Re-send the original message content (Requirement 3.2)
+    await sendMessage(contentToRetry);
+  }, [messages, sendMessage]);
+
+  /**
    * Dismiss the current error message (Requirement 8.1)
    */
   const dismissError = useCallback(() => {
     setError(null);
   }, []);
+
+  /**
+   * Start editing a message at the specified index (Requirement 4.2)
+   * 
+   * @param messageIndex - The index of the user message to edit
+   */
+  const startEditMessage = useCallback((messageIndex: number) => {
+    // Only allow editing user messages
+    if (messages[messageIndex]?.role !== 'user') {
+      console.error('Cannot edit: Not a user message');
+      return;
+    }
+    
+    // Don't allow editing while streaming or loading
+    if (isStreaming || isLoading) {
+      console.error('Cannot edit: Currently streaming or loading');
+      return;
+    }
+    
+    setEditingMessageIndex(messageIndex);
+  }, [messages, isStreaming, isLoading]);
+
+  /**
+   * Save an edited message and re-send to the agent (Requirement 4.4)
+   * Removes all messages after the edited index and re-sends the edited content
+   * 
+   * @param messageIndex - The index of the message being edited
+   * @param newContent - The new content for the message
+   */
+  const saveEditMessage = useCallback(async (messageIndex: number, newContent: string) => {
+    if (!newContent.trim()) {
+      console.error('Cannot save: Empty message content');
+      return;
+    }
+    
+    // Clear editing state
+    setEditingMessageIndex(null);
+    
+    // Remove all messages after the edited index (Requirement 4.4)
+    setMessages(prev => prev.slice(0, messageIndex));
+    
+    // Clear any failed message indices that are at or after the edited index
+    setFailedMessageIndices(prev => {
+      const updated = new Set<number>();
+      prev.forEach(idx => {
+        if (idx < messageIndex) {
+          updated.add(idx);
+        }
+      });
+      return updated;
+    });
+    
+    // Clear any existing error
+    setError(null);
+    
+    // Re-send the edited content to the agent
+    await sendMessage(newContent.trim());
+  }, [sendMessage]);
+
+  /**
+   * Cancel editing and restore the original message (Requirement 4.5)
+   */
+  const cancelEditMessage = useCallback(() => {
+    setEditingMessageIndex(null);
+  }, []);
+
+  /**
+   * Load a session by ID (Requirement 1.2)
+   * Loads messages for the selected session and updates current sessionId
+   * 
+   * @param targetSessionId - The session ID to load
+   */
+  const loadSession = useCallback(async (targetSessionId: string) => {
+    try {
+      setError(null);
+      
+      // Close any active streaming connection
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+      
+      // Reset states
+      setIsLoading(false);
+      setIsStreaming(false);
+      setFailedMessageIndices(new Set());
+      setEditingMessageIndex(null);
+      
+      // Update session ID
+      setSessionId(targetSessionId);
+      
+      // Load messages for the session
+      try {
+        const sessionMessages = await getSessionMessages(targetSessionId);
+        setMessages(sessionMessages);
+      } catch {
+        // If no messages exist, start with empty array
+        setMessages([]);
+        console.log('No existing messages for session');
+      }
+      
+      // Fetch context for the session (Requirement 11.4)
+      await updateContext(targetSessionId);
+      
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load session';
+      setError(errorMessage);
+      console.error('Failed to load session:', err);
+    }
+  }, [updateContext]);
+
+  /**
+   * Delete a session (Requirement 1.6)
+   * Calls DELETE endpoint and removes from local sessions list
+   * 
+   * @param targetSessionId - The session ID to delete
+   */
+  const deleteSessionHandler = useCallback(async (targetSessionId: string) => {
+    try {
+      // Call DELETE endpoint
+      await deleteSessionAPI(targetSessionId);
+      
+      // Remove from local sessions list
+      setSessions(prev => prev.filter(s => s.id !== targetSessionId));
+      
+      // If we deleted the current session, create a new one
+      if (targetSessionId === sessionId) {
+        const newSessionId = await createSession();
+        setSessionId(newSessionId);
+        setMessages([]);
+        setContext(null);
+        setFailedMessageIndices(new Set());
+        setEditingMessageIndex(null);
+        lastUserMessageRef.current = null;
+        
+        // Fetch context for new session
+        await updateContext(newSessionId);
+      }
+      
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete session';
+      setError(errorMessage);
+      console.error('Failed to delete session:', err);
+    }
+  }, [sessionId, updateContext]);
 
   return {
     messages,
@@ -385,9 +688,18 @@ export function useChat(): UseChatReturn {
     error,
     context,
     contextRefreshTrigger,
+    failedMessageIndices,
+    editingMessageIndex,
+    sessions,
     sendMessage,
     clearSession,
     retryLastMessage,
+    retryMessage,
     dismissError,
+    startEditMessage,
+    saveEditMessage,
+    cancelEditMessage,
+    loadSession,
+    deleteSession: deleteSessionHandler,
   };
 }

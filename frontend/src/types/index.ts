@@ -3,12 +3,29 @@
  */
 
 /**
+ * Message status for tracking send/retry state
+ */
+export type MessageStatus = 'sent' | 'failed' | 'pending';
+
+/**
  * Represents a single message in the chat conversation
  */
 export interface Message {
   role: 'user' | 'assistant';
   content: string;
   timestamp?: string;
+  status?: MessageStatus;
+  error?: string;
+}
+
+/**
+ * Represents a summary of a chat session for the sidebar
+ */
+export interface SessionSummary {
+  id: string;
+  preview: string;
+  timestamp: string;
+  messageCount: number;
 }
 
 /**

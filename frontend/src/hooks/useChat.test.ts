@@ -19,6 +19,9 @@ describe('useChat Hook', () => {
     vi.mocked(api.createSession).mockResolvedValue('test-session-id');
     vi.mocked(api.getSessionMessages).mockResolvedValue([]);
     vi.mocked(api.clearSession).mockResolvedValue(undefined);
+    vi.mocked(api.getSessions).mockResolvedValue([]);
+    vi.mocked(api.fetchContext).mockResolvedValue({ recent_venues: [] });
+    vi.mocked(api.deleteSession).mockResolvedValue(true);
   });
 
   afterEach(() => {

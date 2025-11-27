@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { Header } from './Header';
 import { MessageList } from './MessageList';
 import { ChatInput } from './ChatInput';
 import { ContextDisplay } from './ContextDisplay';
-import type { Message, ConversationContext } from '../types';
+import { SessionSidebar } from './SessionSidebar';
+import type { Message, ConversationContext, SessionSummary } from '../types';
 
 interface ChatProps {
   messages: Message[];
@@ -12,16 +14,28 @@ interface ChatProps {
   sessionId: string;
   context: ConversationContext | null;
   contextRefreshTrigger?: number;
+  failedMessageIndices?: Set<number>;
+  editingMessageIndex?: number | null;
+  sessions?: SessionSummary[];
   onSendMessage: (message: string) => void;
   onNewConversation: () => void;
   onContextUpdate?: () => void;
+  onRetryMessage?: (messageIndex: number) => void;
+  onEditMessage?: (messageIndex: number) => void;
+  onSaveEditMessage?: (messageIndex: number, newContent: string) => void;
+  onCancelEditMessage?: () => void;
+  onSessionSelect?: (sessionId: string) => void;
+  onSessionDelete?: (sessionId: string) => void;
 }
 
 /**
  * Chat container component that composes the main chat interface
  * Implements Requirements:
- * - 1.2: React SPA with component-based architecture
+ * - 1.1: Display a collapsible sidebar showing past conversation sessions
+ * - 1.2: React SPA with component-based architecture / Load and display messages from selected session
  * - 1.3: Render messages from React state without duplicates
+ * - 1.5: Display delete button on hover
+ * - 1.6: Remove session from list and delete data
  * - 7.5: Show loading states and connection status
  * - 11.1: Display context information in the UI
  */
@@ -33,10 +47,26 @@ export function Chat({
   sessionId,
   context,
   contextRefreshTrigger,
+  failedMessageIndices,
+  editingMessageIndex,
+  sessions = [],
   onSendMessage,
   onNewConversation,
   onContextUpdate,
+  onRetryMessage,
+  onEditMessage,
+  onSaveEditMessage,
+  onCancelEditMessage,
+  onSessionSelect,
+  onSessionDelete,
 }: ChatProps) {
+  // State for sidebar collapse (Requirement 1.1)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+  const handleToggleSidebar = () => {
+    setIsSidebarCollapsed(prev => !prev);
+  };
+
   return (
     <div 
       className="chat-container"
@@ -48,6 +78,17 @@ export function Chat({
         backgroundColor: 'var(--color-bg)',
       }}
     >
+      {/* Session sidebar for conversation history (Requirement 1.1) */}
+      <SessionSidebar
+        sessions={sessions}
+        currentSessionId={sessionId}
+        isCollapsed={isSidebarCollapsed}
+        onSessionSelect={onSessionSelect || (() => {})}
+        onSessionDelete={onSessionDelete || (() => {})}
+        onNewSession={onNewConversation}
+        onToggleCollapse={handleToggleSidebar}
+      />
+
       {/* Main chat area */}
       <div
         style={{
@@ -61,10 +102,26 @@ export function Chat({
         <Header onNewConversation={onNewConversation} isConnected={isConnected} />
 
         {/* Message list with auto-scroll */}
-        <MessageList messages={messages} isStreaming={isStreaming} isLoading={isLoading} sessionId={sessionId} />
+        <MessageList 
+          messages={messages} 
+          isStreaming={isStreaming} 
+          isLoading={isLoading} 
+          sessionId={sessionId}
+          failedMessageIndices={failedMessageIndices}
+          editingMessageIndex={editingMessageIndex}
+          onRetryMessage={onRetryMessage}
+          onEditMessage={onEditMessage}
+          onSaveEditMessage={onSaveEditMessage}
+          onCancelEditMessage={onCancelEditMessage}
+        />
 
-        {/* Input area - disabled during streaming or loading */}
-        <ChatInput onSend={onSendMessage} disabled={isStreaming || isLoading} isLoading={isLoading} />
+        {/* Input area - disabled during streaming, loading, or editing (Requirement 4.6) */}
+        <ChatInput 
+          onSend={onSendMessage} 
+          disabled={isStreaming || isLoading} 
+          isLoading={isLoading}
+          isEditingMessage={editingMessageIndex !== null}
+        />
       </div>
 
       {/* Context sidebar showing agent memory */}

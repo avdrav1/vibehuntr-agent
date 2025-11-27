@@ -4,22 +4,26 @@ import sys
 from pathlib import Path
 from unittest.mock import MagicMock
 
-# CRITICAL: Add project root to path FIRST, before any other imports
-# This ensures that 'app' module can be found when backend modules try to import it
+# CRITICAL: Add both project root AND backend directory to path
+# - Project root is needed for 'app' module (ADK agent)
+# - Backend directory is needed for 'app.main' (FastAPI app) when tests import it
 project_root = Path(__file__).resolve().parent.parent.parent
-
-# Remove backend directory from sys.path if it's there (pytest adds it)
 backend_dir = str(project_root / "backend")
+
+# Ensure backend directory is at the very beginning so 'app' resolves to backend/app
+# This allows tests to import from app.main, app.services, etc.
 if backend_dir in sys.path:
     sys.path.remove(backend_dir)
+sys.path.insert(0, backend_dir)
 
-# Ensure project root is at the very beginning
+# Also add project root for any imports that need it
 if str(project_root) in sys.path:
     sys.path.remove(str(project_root))
-sys.path.insert(0, str(project_root))
+sys.path.insert(1, str(project_root))
 
 # Debug: Print sys.path to see what's happening
 print(f"DEBUG conftest.py: project_root = {project_root}")
+print(f"DEBUG conftest.py: backend_dir = {backend_dir}")
 print(f"DEBUG conftest.py: sys.path[:3] = {sys.path[:3]}")
 
 # Mock heavy Google dependencies BEFORE any imports

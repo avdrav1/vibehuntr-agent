@@ -72,7 +72,13 @@ def test_get_messages_empty_session(client):
 
 
 def test_get_messages_with_history(client):
-    """Test getting messages from a session with history."""
+    """Test getting messages from a session with history.
+    
+    Note: This test patches the ADK import to raise an exception,
+    forcing the endpoint to fall back to session_manager.
+    """
+    from unittest.mock import patch
+    
     # Create a session
     create_response = client.post("/api/sessions")
     session_id = create_response.json()["session_id"]
@@ -82,8 +88,10 @@ def test_get_messages_with_history(client):
     session_manager.add_message(session_id, "assistant", "Hi there!")
     session_manager.add_message(session_id, "user", "How are you?")
     
-    # Get messages
-    response = client.get(f"/api/sessions/{session_id}/messages")
+    # Patch the ADK import to raise an exception, forcing fallback to session_manager
+    with patch.dict("sys.modules", {"app.event_planning.agent_invoker": None}):
+        # Get messages
+        response = client.get(f"/api/sessions/{session_id}/messages")
     
     assert response.status_code == 200
     data = response.json()
@@ -114,10 +122,10 @@ def test_get_messages_nonexistent_session(client):
     assert "not found" in data["error"].lower()
 
 
-def test_clear_session(client):
-    """Test clearing a session's message history.
+def test_delete_session(client):
+    """Test deleting a session completely.
     
-    Requirements: 3.5, 4.5
+    Requirements: 1.6
     """
     # Create a session
     create_response = client.post("/api/sessions")
@@ -131,22 +139,19 @@ def test_clear_session(client):
     messages_before = session_manager.get_messages(session_id)
     assert len(messages_before) == 2
     
-    # Clear session
+    # Delete session
     response = client.delete(f"/api/sessions/{session_id}")
     
-    assert response.status_code == 204
-    assert response.content == b""  # No content in response
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
     
-    # Verify messages were cleared
-    messages_after = session_manager.get_messages(session_id)
-    assert len(messages_after) == 0
-    
-    # Verify session still exists
-    assert session_manager.session_exists(session_id)
+    # Verify session no longer exists
+    assert not session_manager.session_exists(session_id)
 
 
-def test_clear_nonexistent_session(client):
-    """Test clearing a session that doesn't exist."""
+def test_delete_nonexistent_session(client):
+    """Test deleting a session that doesn't exist."""
     response = client.delete("/api/sessions/nonexistent-session-id")
     
     assert response.status_code == 404
@@ -156,7 +161,9 @@ def test_clear_nonexistent_session(client):
 
 
 def test_session_workflow(client):
-    """Test complete session workflow: create, use, get history, clear."""
+    """Test complete session workflow: create, use, get history, delete."""
+    from unittest.mock import patch
+    
     # 1. Create session
     create_response = client.post("/api/sessions")
     assert create_response.status_code == 201
@@ -166,16 +173,117 @@ def test_session_workflow(client):
     session_manager.add_message(session_id, "user", "First message")
     session_manager.add_message(session_id, "assistant", "First response")
     
-    # 3. Get history
-    history_response = client.get(f"/api/sessions/{session_id}/messages")
-    assert history_response.status_code == 200
-    assert len(history_response.json()["messages"]) == 2
+    # 3. Get history (patch ADK to force fallback to session_manager)
+    with patch.dict("sys.modules", {"app.event_planning.agent_invoker": None}):
+        history_response = client.get(f"/api/sessions/{session_id}/messages")
+        assert history_response.status_code == 200
+        assert len(history_response.json()["messages"]) == 2
     
-    # 4. Clear session
-    clear_response = client.delete(f"/api/sessions/{session_id}")
-    assert clear_response.status_code == 204
+    # 4. Delete session
+    delete_response = client.delete(f"/api/sessions/{session_id}")
+    assert delete_response.status_code == 200
+    assert delete_response.json()["success"] is True
     
-    # 5. Verify cleared
+    # 5. Verify session no longer exists
     final_history = client.get(f"/api/sessions/{session_id}/messages")
-    assert final_history.status_code == 200
-    assert len(final_history.json()["messages"]) == 0
+    assert final_history.status_code == 404
+
+
+def test_list_sessions_empty(client):
+    """Test listing sessions when none exist.
+    
+    Requirements: 1.1
+    """
+    response = client.get("/api/sessions")
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert "sessions" in data
+    assert data["sessions"] == []
+
+
+def test_list_sessions_with_data(client):
+    """Test listing sessions with data.
+    
+    Requirements: 1.1, 1.4
+    """
+    # Create sessions and add messages
+    create_response1 = client.post("/api/sessions")
+    session_id1 = create_response1.json()["session_id"]
+    session_manager.add_message(session_id1, "user", "Hello from session 1")
+    
+    create_response2 = client.post("/api/sessions")
+    session_id2 = create_response2.json()["session_id"]
+    session_manager.add_message(session_id2, "user", "Hello from session 2")
+    session_manager.add_message(session_id2, "assistant", "Response in session 2")
+    
+    # List sessions
+    response = client.get("/api/sessions")
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert "sessions" in data
+    assert len(data["sessions"]) == 2
+    
+    # Verify session summaries have required fields
+    for session in data["sessions"]:
+        assert "id" in session
+        assert "preview" in session
+        assert "timestamp" in session
+        assert "messageCount" in session
+
+
+def test_list_sessions_preview_matches_first_message(client):
+    """Test that session preview matches first message content.
+    
+    Requirements: 1.4
+    """
+    # Create a session with a specific first message
+    create_response = client.post("/api/sessions")
+    session_id = create_response.json()["session_id"]
+    first_message = "This is my first message in the conversation"
+    session_manager.add_message(session_id, "user", first_message)
+    session_manager.add_message(session_id, "assistant", "This is a response")
+    
+    # List sessions
+    response = client.get("/api/sessions")
+    
+    assert response.status_code == 200
+    sessions = response.json()["sessions"]
+    
+    # Find our session
+    our_session = next(s for s in sessions if s["id"] == session_id)
+    
+    # Preview should contain the first message content
+    assert first_message in our_session["preview"] or our_session["preview"] in first_message
+
+
+def test_deleted_session_not_in_list(client):
+    """Test that deleted sessions don't appear in the list.
+    
+    Requirements: 1.6
+    """
+    # Create two sessions
+    create_response1 = client.post("/api/sessions")
+    session_id1 = create_response1.json()["session_id"]
+    session_manager.add_message(session_id1, "user", "Session 1 message")
+    
+    create_response2 = client.post("/api/sessions")
+    session_id2 = create_response2.json()["session_id"]
+    session_manager.add_message(session_id2, "user", "Session 2 message")
+    
+    # Verify both sessions are in the list
+    list_response = client.get("/api/sessions")
+    session_ids = [s["id"] for s in list_response.json()["sessions"]]
+    assert session_id1 in session_ids
+    assert session_id2 in session_ids
+    
+    # Delete session 1
+    delete_response = client.delete(f"/api/sessions/{session_id1}")
+    assert delete_response.status_code == 200
+    
+    # Verify session 1 is no longer in the list
+    list_response2 = client.get("/api/sessions")
+    session_ids2 = [s["id"] for s in list_response2.json()["sessions"]]
+    assert session_id1 not in session_ids2
+    assert session_id2 in session_ids2

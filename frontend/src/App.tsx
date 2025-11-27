@@ -18,7 +18,7 @@ import { ErrorMessage } from './components/ErrorMessage'
 import { useChat } from './hooks/useChat'
 
 function App() {
-  // Initialize chat with session management (Requirements 3.1, 3.4)
+  // Initialize chat with session management (Requirements 3.1, 3.4, 1.1, 1.2, 1.5, 1.6)
   const {
     messages,
     sessionId,
@@ -28,10 +28,19 @@ function App() {
     error,
     context,
     contextRefreshTrigger,
+    failedMessageIndices,
+    editingMessageIndex,
+    sessions,
     sendMessage,
     clearSession,
     retryLastMessage,
+    retryMessage,
     dismissError,
+    startEditMessage,
+    saveEditMessage,
+    cancelEditMessage,
+    loadSession,
+    deleteSession,
   } = useChat();
 
   return (
@@ -55,7 +64,7 @@ function App() {
         </div>
       )}
       
-      {/* Main chat interface */}
+      {/* Main chat interface with session sidebar (Requirements 1.1, 1.2, 1.5, 1.6) */}
       <Chat
         messages={messages}
         sessionId={sessionId}
@@ -64,8 +73,17 @@ function App() {
         isConnected={isConnected}
         context={context}
         contextRefreshTrigger={contextRefreshTrigger}
+        failedMessageIndices={failedMessageIndices}
+        editingMessageIndex={editingMessageIndex}
+        sessions={sessions}
         onSendMessage={sendMessage}
         onNewConversation={clearSession}
+        onRetryMessage={retryMessage}
+        onEditMessage={startEditMessage}
+        onSaveEditMessage={saveEditMessage}
+        onCancelEditMessage={cancelEditMessage}
+        onSessionSelect={loadSession}
+        onSessionDelete={deleteSession}
       />
     </div>
   )

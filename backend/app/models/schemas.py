@@ -129,3 +129,44 @@ class StatusResponse(BaseModel):
     """
     success: bool
     message: Optional[str] = None
+
+
+class SessionSummary(BaseModel):
+    """Summary of a conversation session for the sidebar.
+    
+    Attributes:
+        id: Unique session identifier
+        preview: Preview of the first message (truncated)
+        timestamp: ISO format timestamp of last activity
+        messageCount: Number of messages in the session
+        
+    Requirements: 1.4
+    """
+    id: str
+    preview: str
+    timestamp: str
+    messageCount: int = Field(alias="messageCount")
+    
+    model_config = {"populate_by_name": True}
+
+
+class SessionListResponse(BaseModel):
+    """Response model for listing all sessions.
+    
+    Attributes:
+        sessions: List of session summaries
+        
+    Requirements: 1.1, 1.4
+    """
+    sessions: list[SessionSummary]
+
+
+class DeleteSessionResponse(BaseModel):
+    """Response model for session deletion.
+    
+    Attributes:
+        success: Whether the deletion was successful
+        
+    Requirements: 1.6
+    """
+    success: bool

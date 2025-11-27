@@ -12,7 +12,8 @@ import type {
   ChatRequest, 
   ChatResponse, 
   SessionResponse, 
-  MessagesResponse
+  MessagesResponse,
+  SessionSummary
 } from '../types';
 import type {
   LinkPreviewRequest,
@@ -187,6 +188,71 @@ export async function getSessionMessages(sessionId: string): Promise<Message[]> 
     }
     throw new APIError(
       error instanceof Error ? error.message : 'Unable to load message history. Please try again.'
+    );
+  }
+}
+
+/**
+ * Get all sessions for the user
+ * 
+ * GET /api/sessions
+ * Requirement: 1.1, 1.4
+ */
+export async function getSessions(): Promise<SessionSummary[]> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/sessions`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const data = await handleResponse<{ sessions: SessionSummary[] }>(response);
+    return data.sessions;
+  } catch (error) {
+    if (error instanceof APIError) {
+      throw error;
+    }
+    // Handle network errors with user-friendly messages (Requirement 8.1)
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new APIError('Network error: Unable to reach the server. Please check your connection.');
+    }
+    throw new APIError(
+      error instanceof Error ? error.message : 'Unable to load sessions. Please try again.'
+    );
+  }
+}
+
+/**
+ * Delete a session
+ * 
+ * DELETE /api/sessions/{session_id}
+ * Requirement: 1.6
+ */
+export async function deleteSession(sessionId: string): Promise<boolean> {
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/api/sessions/${sessionId}`,
+      {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    const data = await handleResponse<{ success: boolean }>(response);
+    return data.success;
+  } catch (error) {
+    if (error instanceof APIError) {
+      throw error;
+    }
+    // Handle network errors with user-friendly messages (Requirement 8.1)
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new APIError('Network error: Unable to reach the server. Please check your connection.');
+    }
+    throw new APIError(
+      error instanceof Error ? error.message : 'Unable to delete session. Please try again.'
     );
   }
 }

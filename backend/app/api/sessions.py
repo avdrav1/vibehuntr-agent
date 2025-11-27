@@ -12,12 +12,15 @@ import logging
 import uuid
 from fastapi import APIRouter, HTTPException, Path
 
-from backend.app.models.schemas import (
+from app.models.schemas import (
     SessionResponse,
     MessagesResponse,
     ErrorResponse,
+    SessionListResponse,
+    SessionSummary,
+    DeleteSessionResponse,
 )
-from backend.app.services.session_manager import session_manager
+from app.services.session_manager import session_manager
 
 
 # Configure logging
@@ -86,6 +89,62 @@ async def create_session() -> SessionResponse:
         raise HTTPException(
             status_code=500,
             detail=f"Failed to create session: {str(e)}"
+        )
+
+
+@router.get(
+    "",
+    response_model=SessionListResponse,
+    responses={
+        500: {"model": ErrorResponse, "description": "Failed to retrieve sessions"},
+    },
+)
+async def list_sessions() -> SessionListResponse:
+    """
+    List all conversation sessions.
+    
+    This endpoint returns a list of all sessions with preview, timestamp,
+    and message count for each. Sessions are sorted by timestamp descending
+    (newest first).
+    
+    Returns:
+        SessionListResponse: List of session summaries
+        
+    Raises:
+        HTTPException: 500 if retrieval fails
+        
+    Requirements:
+    - 1.1: Display a collapsible sidebar showing a list of past conversation sessions
+    - 1.4: Show a preview of the first message and the session timestamp
+    """
+    try:
+        logger.info("Retrieving all sessions")
+        
+        # Get all session summaries from session manager
+        session_data = session_manager.get_all_sessions()
+        
+        # Convert to SessionSummary models
+        sessions = [
+            SessionSummary(
+                id=s["id"],
+                preview=s["preview"],
+                timestamp=s["timestamp"],
+                messageCount=s["messageCount"]
+            )
+            for s in session_data
+        ]
+        
+        logger.info(f"Retrieved {len(sessions)} sessions")
+        return SessionListResponse(sessions=sessions)
+        
+    except Exception as e:
+        logger.error(
+            f"Failed to retrieve sessions: {type(e).__name__}: {e}",
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to retrieve sessions: {str(e)}"
         )
 
 
@@ -192,37 +251,35 @@ async def get_messages(
 
 @router.delete(
     "/{session_id}",
-    status_code=204,
+    response_model=DeleteSessionResponse,
     responses={
         404: {"model": ErrorResponse, "description": "Session not found"},
-        500: {"model": ErrorResponse, "description": "Failed to clear session"},
+        500: {"model": ErrorResponse, "description": "Failed to delete session"},
     },
 )
-async def clear_session(
+async def delete_session(
     session_id: str = Path(..., description="Session identifier")
-) -> None:
+) -> DeleteSessionResponse:
     """
-    Clear a session's message history.
+    Delete a session completely.
     
-    This endpoint removes all messages from a session while keeping the
-    session ID valid. This is useful for starting a new conversation
-    without creating a new session.
+    This endpoint removes the session and all its messages from storage.
+    The session ID will no longer be valid after deletion.
     
     Args:
         session_id: Unique identifier for the session
         
     Returns:
-        None: 204 No Content on success
+        DeleteSessionResponse: Success status
         
     Raises:
         HTTPException: 404 if session doesn't exist, 500 on other errors
         
     Requirements:
-    - 3.5: Backend creates new session ID when user starts new conversation
-    - 4.5: DELETE /api/sessions/{session_id} endpoint for clearing sessions
+    - 1.6: Remove the session from the list and delete its data from storage
     """
     try:
-        logger.info(f"Clearing session: {session_id}")
+        logger.info(f"Deleting session: {session_id}")
         
         # Check if session exists
         if not session_manager.session_exists(session_id):
@@ -232,22 +289,36 @@ async def clear_session(
                 detail=f"Session {session_id} not found"
             )
         
-        # Clear session history
-        session_manager.clear_session(session_id)
+        # Delete session completely
+        success = session_manager.delete_session(session_id)
         
-        logger.info(f"Session cleared successfully: {session_id}")
-        # Return 204 No Content (no response body)
+        # Also try to delete from ADK session service
+        try:
+            from app.event_planning.agent_invoker import _session_service
+            _session_service.delete_session_sync(
+                session_id=session_id,
+                app_name="vibehuntr_playground",
+                user_id="web_user"
+            )
+            logger.debug(f"Deleted ADK session: {session_id}")
+        except Exception as adk_error:
+            logger.warning(
+                f"Failed to delete ADK session (may not exist): {adk_error}"
+            )
+        
+        logger.info(f"Session deleted successfully: {session_id}")
+        return DeleteSessionResponse(success=success)
         
     except HTTPException:
         # Re-raise HTTP exceptions
         raise
     except Exception as e:
         logger.error(
-            f"Failed to clear session {session_id}: "
+            f"Failed to delete session {session_id}: "
             f"{type(e).__name__}: {e}",
             exc_info=True
         )
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to clear session: {str(e)}"
+            detail=f"Failed to delete session: {str(e)}"
         )

@@ -1,0 +1,150 @@
+# Implementation Plan
+
+- [x] 1. Set up foundation and types
+  - [x] 1.1 Extend Message type with status and error fields
+    - Update `frontend/src/types/index.ts` to add `status?: 'sent' | 'failed' | 'pending'` and `error?: string` to Message interface
+    - _Requirements: 3.1, 4.4_
+  - [x] 1.2 Create SessionSummary type
+    - Add `SessionSummary` interface with `id`, `preview`, `timestamp`, `messageCount` fields
+    - _Requirements: 1.4_
+  - [x] 1.3 Write property test for session preview matching first message
+    - **Property 2: Session preview matches first message**
+    - **Validates: Requirements 1.4**
+
+- [x] 2. Implement Typing Indicator
+  - [x] 2.1 Create TypingIndicator component
+    - Create `frontend/src/components/TypingIndicator.tsx`
+    - Display "Vibehuntr is thinking..." with animated dots
+    - Accept `isVisible` prop to control visibility
+    - _Requirements: 2.1, 2.2_
+  - [x] 2.2 Integrate TypingIndicator into MessageList
+    - Show indicator when `isLoading` is true and not yet streaming
+    - Hide when streaming starts or error occurs
+    - _Requirements: 2.3, 2.4_
+  - [x] 2.3 Write property test for typing indicator lifecycle
+    - **Property 4: Typing indicator lifecycle**
+    - **Validates: Requirements 2.1, 2.3, 2.4**
+
+- [x] 3. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 4. Imamplement Message Retry functionality
+  - [x] 4.1 Add retry state tracking to useChat hook
+    - Add `failedMessageIndices: Set<number>` state
+    - Track which messages have failed
+    - _Requirements: 3.1_
+  - [x] 4.2 Implement retryMessage function in useChat
+    - Create `retryMessage(messageIndex: number)` function
+    - Remove failed response, re-send original message content
+    - _Requirements: 3.2, 3.3_
+  - [x] 4.3 Add retry button to Message component
+    - Show retry button when message has `status === 'failed'`
+    - Wire up `onRetry` callback
+    - _Requirements: 3.1, 3.4, 3.5_
+  - [x] 4.4 Write property test for retry sends same content
+    - **Property 6: Retry sends same content**
+    - **Validates: Requirements 3.2**
+  - [x] 4.5 Write property test for failed messages show retry
+    - **Property 5: Failed messages show retry**
+    - **Validates: Requirements 3.1**
+
+- [ ] 5. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 6. Implement Message Edit functionality
+  - [x] 6.1 Add edit state tracking to useChat hook
+    - Add `editingMessageIndex: number | null` state
+    - Add `startEditMessage`, `saveEditMessage`, `cancelEditMessage` functions
+    - _Requirements: 4.2, 4.5_
+  - [x] 6.2 Implement edit mode in Message component
+    - Show edit button on hover for user messages
+    - Replace message content with textarea when editing
+    - Show save/cancel buttons in edit mode
+    - _Requirements: 4.1, 4.2, 4.3_
+  - [x] 6.3 Implement saveEditMessage logic
+    - Remove all messages after edited index
+    - Re-send edited content to agent
+    - _Requirements: 4.4_
+  - [x] 6.4 Disable main ChatInput during edit mode
+    - Pass `editingMessageIndex` to ChatInput
+    - Disable input when editing is active
+    - _Requirements: 4.6_
+  - [x] 6.5 Write property test for edit input contains original
+    - **Property 8: Edit input contains original**
+    - **Validates: Requirements 4.2**
+  - [x] 6.6 Write property test for edit removes subsequent messages
+    - **Property 9: Edit removes subsequent messages**
+    - **Validates: Requirements 4.4**
+  - [x] 6.7 Write property test for cancel preserves original
+    - **Property 10: Cancel preserves original**
+    - **Validates: Requirements 4.5**
+  - [x] 6.8 Write property test for edit mode disables input
+    - **Property 11: Edit mode disables input**
+    - **Validates: Requirements 4.6**
+
+- [ ] 7. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 8. Implement Backend Session List API
+  - [x] 8.1 Create GET /api/sessions endpoint
+    - Return list of all sessions with preview, timestamp, messageCount
+    - Query session_manager for session data
+    - _Requirements: 1.1, 1.4_
+  - [x] 8.2 Create DELETE /api/sessions/:sessionId endpoint
+    - Delete session from session_manager
+    - Return success/failure response
+    - _Requirements: 1.6_
+  - [x] 8.3 Write property test for deleted sessions are removed
+    - **Property 3: Deleted sessions are removed**
+    - **Validates: Requirements 1.6**
+
+- [x] 9. Implement Session Sidebar Component
+  - [x] 9.1 Create SessionSidebar component
+    - Create `frontend/src/components/SessionSidebar.tsx`
+    - Display list of sessions with preview and timestamp
+    - Support collapsed/expanded state
+    - _Requirements: 1.1, 1.4_
+  - [x] 9.2 Add session selection functionality
+    - Highlight current session
+    - Call `onSessionSelect` when clicking a session
+    - _Requirements: 1.2_
+  - [x] 9.3 Add session delete functionality
+    - Show delete button on hover
+    - Call `onSessionDelete` with confirmation
+    - _Requirements: 1.5, 1.6_
+  - [x] 9.4 Add new session button
+    - Button at bottom of sidebar to start new conversation
+    - _Requirements: 1.3_
+
+- [x] 10. Integrate Session Management into useChat
+  - [x] 10.1 Add sessions state and fetch logic
+    - Add `sessions: SessionSummary[]` state
+    - Fetch sessions on mount from `/api/sessions`
+    - _Requirements: 1.1_
+  - [x] 10.2 Implement loadSession function
+    - Load messages for selected session
+    - Update current sessionId
+    - _Requirements: 1.2_
+  - [x] 10.3 Implement deleteSession function
+    - Call DELETE endpoint
+    - Remove from local sessions list
+    - _Requirements: 1.6_
+  - [x] 10.4 Update session list on new conversation
+    - Add new session to top of list when created
+    - _Requirements: 1.3_
+  - [x] 10.5 Write property test for new sessions appear at list top
+    - **Property 1: New sessions appear at list top**
+    - **Validates: Requirements 1.3**
+
+- [x] 11. Integrate SessionSidebar into App layout
+  - [x] 11.1 Update Chat component layout
+    - Add SessionSidebar to left side
+    - Maintain ContextDisplay on right side
+    - Ensure responsive behavior
+    - _Requirements: 1.1_
+  - [x] 11.2 Wire up sidebar callbacks
+    - Connect session selection, deletion, new session handlers
+    - _Requirements: 1.2, 1.5, 1.6_
+
+- [ ] 12. Final Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.

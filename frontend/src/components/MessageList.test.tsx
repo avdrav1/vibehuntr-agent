@@ -144,8 +144,9 @@ describe('MessageList Component', () => {
 
       render(<MessageList messages={messages} isLoading={true} />);
       
-      expect(screen.getByLabelText('Loading response')).toBeInTheDocument();
-      expect(screen.getByText('Thinking...')).toBeInTheDocument();
+      // TypingIndicator component uses "Vibehuntr is thinking" as aria-label
+      expect(screen.getByLabelText('Vibehuntr is thinking')).toBeInTheDocument();
+      expect(screen.getByText('Vibehuntr is thinking...')).toBeInTheDocument();
     });
 
     it('does not show loading indicator when isLoading is false', () => {
@@ -165,7 +166,8 @@ describe('MessageList Component', () => {
 
       render(<MessageList messages={messages} isLoading={true} />);
       
-      const loadingElement = screen.getByLabelText('Loading response');
+      // TypingIndicator component uses "Vibehuntr is thinking" as aria-label
+      const loadingElement = screen.getByLabelText('Vibehuntr is thinking');
       expect(loadingElement).toHaveClass('glass', 'fade-in');
     });
   });

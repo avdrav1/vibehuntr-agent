@@ -121,6 +121,60 @@ class SessionManager:
             Number of active sessions
         """
         return len(self.sessions)
+    
+    def get_all_sessions(self) -> List[Dict[str, any]]:
+        """Get summaries of all sessions.
+        
+        Returns a list of session summaries with id, preview, timestamp,
+        and messageCount for each session.
+        
+        Returns:
+            List of session summary dictionaries
+            
+        Requirements: 1.1, 1.4
+        """
+        summaries = []
+        for session_id, messages in self.sessions.items():
+            # Get preview from first message (truncated to 100 chars)
+            preview = ""
+            if messages:
+                first_msg = messages[0]
+                preview = first_msg.content[:100] if len(first_msg.content) > 100 else first_msg.content
+            
+            # Get timestamp from last message, or empty string if no messages
+            timestamp = ""
+            if messages:
+                timestamp = messages[-1].timestamp
+            
+            summaries.append({
+                "id": session_id,
+                "preview": preview,
+                "timestamp": timestamp,
+                "messageCount": len(messages)
+            })
+        
+        # Sort by timestamp descending (newest first)
+        summaries.sort(key=lambda x: x["timestamp"] or "", reverse=True)
+        return summaries
+    
+    def delete_session(self, session_id: str) -> bool:
+        """Delete a session completely.
+        
+        Unlike clear_session which keeps the session ID valid,
+        this method removes the session entirely.
+        
+        Args:
+            session_id: Unique identifier for the session
+            
+        Returns:
+            True if session was deleted, False if it didn't exist
+            
+        Requirements: 1.6
+        """
+        if session_id in self.sessions:
+            del self.sessions[session_id]
+            return True
+        return False
 
 
 # Global session manager instance

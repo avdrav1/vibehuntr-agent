@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Message } from './Message';
 import { Welcome } from './Welcome';
+import { TypingIndicator } from './TypingIndicator';
 import type { Message as MessageType } from '../types';
 
 interface MessageListProps {
@@ -8,6 +9,12 @@ interface MessageListProps {
   isStreaming?: boolean;
   isLoading?: boolean;
   sessionId?: string;
+  failedMessageIndices?: Set<number>;
+  editingMessageIndex?: number | null;
+  onRetryMessage?: (messageIndex: number) => void;
+  onEditMessage?: (messageIndex: number) => void;
+  onSaveEditMessage?: (messageIndex: number, newContent: string) => void;
+  onCancelEditMessage?: () => void;
 }
 
 /**
@@ -18,7 +25,18 @@ interface MessageListProps {
  * - 6.5: Append new messages without duplicating existing ones
  * - 7.5: Show loading indicator while waiting for first token
  */
-export function MessageList({ messages, isStreaming = false, isLoading = false, sessionId = 'default' }: MessageListProps) {
+export function MessageList({ 
+  messages, 
+  isStreaming = false, 
+  isLoading = false, 
+  sessionId = 'default',
+  failedMessageIndices = new Set(),
+  editingMessageIndex = null,
+  onRetryMessage,
+  onEditMessage,
+  onSaveEditMessage,
+  onCancelEditMessage,
+}: MessageListProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -54,42 +72,35 @@ export function MessageList({ messages, isStreaming = false, isLoading = false, 
         const isLastMessage = index === messages.length - 1;
         const showStreamingIndicator = isStreaming && isLastMessage && message.role === 'assistant';
         
+        // Check if this message has failed (Requirement 3.1)
+        const isFailed = failedMessageIndices.has(index) || message.status === 'failed';
+        
+        // Check if this message is being edited (Requirement 4.2)
+        const isEditing = editingMessageIndex === index;
+        
+        // Only allow editing user messages that haven't failed
+        const canEdit = message.role === 'user' && !isFailed && !isStreaming && !isLoading;
+        
         return (
           <Message 
             key={`${message.role}-${index}-${message.timestamp || ''}`}
             message={message}
             isStreaming={showStreamingIndicator}
             sessionId={sessionId}
+            isFailed={isFailed}
+            isEditing={isEditing}
+            onRetry={isFailed && onRetryMessage ? () => onRetryMessage(index) : undefined}
+            onEdit={canEdit && onEditMessage ? () => onEditMessage(index) : undefined}
+            onSaveEdit={isEditing && onSaveEditMessage ? (content: string) => onSaveEditMessage(index, content) : undefined}
+            onCancelEdit={isEditing ? onCancelEditMessage : undefined}
           />
         );
       })}
       
-      {/* Loading indicator while waiting for first token (Requirement 7.5) */}
-      {isLoading && (
-        <div 
-          className="flex items-center gap-3 p-4 glass fade-in"
-          role="status"
-          aria-live="polite"
-          aria-label="Loading response"
-        >
-          <div className="text-lg" role="img" aria-label="Vibehuntr assistant">
-            🎉
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="loading-dots">
-              <span className="loading-dot"></span>
-              <span className="loading-dot"></span>
-              <span className="loading-dot"></span>
-            </div>
-            <span 
-              className="text-sm"
-              style={{ color: 'var(--color-text-muted)' }}
-            >
-              Thinking...
-            </span>
-          </div>
-        </div>
-      )}
+      {/* Typing indicator while waiting for first token (Requirements 2.1, 2.3, 2.4, 7.5)
+          - Show when isLoading is true and not yet streaming
+          - Hide when streaming starts (isStreaming becomes true) or error occurs */}
+      <TypingIndicator isVisible={isLoading && !isStreaming} />
       
       {/* Invisible element at the end for auto-scroll target */}
       <div ref={messagesEndRef} />

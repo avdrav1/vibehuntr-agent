@@ -5,6 +5,7 @@ interface ChatInputProps {
   onSend: (message: string) => void;
   disabled?: boolean;
   isLoading?: boolean;
+  isEditingMessage?: boolean;
 }
 
 /**
@@ -14,7 +15,7 @@ interface ChatInputProps {
  * - 7.5: Disable during streaming and loading
  * - 9.3: Vibehuntr button styling
  */
-export function ChatInput({ onSend, disabled = false, isLoading = false }: ChatInputProps) {
+export function ChatInput({ onSend, disabled = false, isLoading = false, isEditingMessage = false }: ChatInputProps) {
   const [input, setInput] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -32,9 +33,12 @@ export function ChatInput({ onSend, disabled = false, isLoading = false }: ChatI
     }
   }, [disabled]);
 
+  // Combined disabled state including edit mode (Requirement 4.6)
+  const isDisabled = disabled || isEditingMessage;
+
   const handleSend = () => {
     const trimmedInput = input.trim();
-    if (trimmedInput && !disabled) {
+    if (trimmedInput && !isDisabled) {
       onSend(trimmedInput);
       setInput('');
       
@@ -76,13 +80,15 @@ export function ChatInput({ onSend, disabled = false, isLoading = false }: ChatI
           value={input}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
-          disabled={disabled}
+          disabled={isDisabled}
           placeholder={
-            isLoading 
-              ? "Loading response..." 
-              : disabled 
-                ? "Waiting for response..." 
-                : "Type your message... (Shift+Enter for new line)"
+            isEditingMessage
+              ? "Finish editing your message above..."
+              : isLoading 
+                ? "Loading response..." 
+                : disabled 
+                  ? "Waiting for response..." 
+                  : "Type your message... (Shift+Enter for new line)"
           }
           className="input-field resize-none overflow-hidden"
           style={{
@@ -91,18 +97,19 @@ export function ChatInput({ onSend, disabled = false, isLoading = false }: ChatI
           }}
           rows={1}
           aria-label="Message input"
+          data-testid="chat-input"
         />
 
         {/* Send Button */}
         <button
           onClick={handleSend}
-          disabled={disabled || !input.trim()}
+          disabled={isDisabled || !input.trim()}
           className="btn-primary flex items-center justify-center"
           style={{
             minWidth: '3rem',
             height: '2.5rem',
-            opacity: disabled || !input.trim() ? 0.5 : 1,
-            cursor: disabled || !input.trim() ? 'not-allowed' : 'pointer',
+            opacity: isDisabled || !input.trim() ? 0.5 : 1,
+            cursor: isDisabled || !input.trim() ? 'not-allowed' : 'pointer',
           }}
           aria-label="Send message"
         >

@@ -33,11 +33,12 @@ describe('Frontend Performance Tests', () => {
   });
 
   it('handles long conversation (100+ messages) efficiently', async () => {
-    // Mock session creation
-    (global.fetch as any).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ session_id: 'test-session' }),
-    });
+    // Mock API calls - getSessions, createSession, getSessionMessages, fetchContext
+    (global.fetch as any)
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ sessions: [] }) }) // getSessions
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ session_id: 'test-session' }) }) // createSession
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ messages: [] }) }) // getSessionMessages
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ recent_venues: [] }) }); // fetchContext
 
     const { result } = renderHook(() => useChat());
 
@@ -94,11 +95,12 @@ describe('Frontend Performance Tests', () => {
   });
 
   it('handles rapid message sending without blocking', async () => {
-    // Mock session creation
-    (global.fetch as any).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ session_id: 'test-session' }),
-    });
+    // Mock API calls - getSessions, createSession, getSessionMessages, fetchContext
+    (global.fetch as any)
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ sessions: [] }) }) // getSessions
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ session_id: 'test-session' }) }) // createSession
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ messages: [] }) }) // getSessionMessages
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ recent_venues: [] }) }); // fetchContext
 
     const { result } = renderHook(() => useChat());
 
@@ -150,17 +152,39 @@ describe('Frontend Performance Tests', () => {
   it('does not leak memory with repeated clear operations', async () => {
     // Mock session creation
     let sessionCount = 0;
-    (global.fetch as any).mockImplementation((url: string) => {
-      if (url.includes('/api/sessions') && !url.includes('messages')) {
+    (global.fetch as any).mockImplementation((url: string, options?: RequestInit) => {
+      // GET /api/sessions - list sessions
+      if (url.includes('/api/sessions') && !url.includes('messages') && (!options || options.method === 'GET')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ sessions: [] }),
+        });
+      }
+      // POST /api/sessions - create session
+      if (url.includes('/api/sessions') && !url.includes('messages') && options?.method === 'POST') {
         sessionCount++;
         return Promise.resolve({
           ok: true,
           json: async () => ({ session_id: `session-${sessionCount}` }),
         });
       }
+      // DELETE /api/sessions - delete session
+      if (url.includes('/api/sessions') && options?.method === 'DELETE') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ status: 'cleared' }),
+        });
+      }
+      // GET /api/context - fetch context
+      if (url.includes('/api/context')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ recent_venues: [] }),
+        });
+      }
       return Promise.resolve({
         ok: true,
-        json: async () => ({}),
+        json: async () => ({ messages: [] }),
       });
     });
 
@@ -215,11 +239,12 @@ describe('Frontend Performance Tests', () => {
   });
 
   it('maintains performance with streaming updates', async () => {
-    // Mock session creation
-    (global.fetch as any).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ session_id: 'test-session' }),
-    });
+    // Mock API calls - getSessions, createSession, getSessionMessages, fetchContext
+    (global.fetch as any)
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ sessions: [] }) }) // getSessions
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ session_id: 'test-session' }) }) // createSession
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ messages: [] }) }) // getSessionMessages
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ recent_venues: [] }) }); // fetchContext
 
     const { result } = renderHook(() => useChat());
 
@@ -270,11 +295,12 @@ describe('Frontend Performance Tests', () => {
   });
 
   it('handles concurrent operations without race conditions', async () => {
-    // Mock session creation
-    (global.fetch as any).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ session_id: 'test-session' }),
-    });
+    // Mock API calls - getSessions, createSession, getSessionMessages, fetchContext
+    (global.fetch as any)
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ sessions: [] }) }) // getSessions
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ session_id: 'test-session' }) }) // createSession
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ messages: [] }) }) // getSessionMessages
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ recent_venues: [] }) }); // fetchContext
 
     const { result } = renderHook(() => useChat());
 

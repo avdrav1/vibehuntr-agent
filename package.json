@@ -1,0 +1,25 @@
+{
+  "name": "vibehuntr-agent",
+  "version": "1.0.0",
+  "description": "AI-powered event planning agent built with Google's Agent Development Kit (ADK). Features a modern React + FastAPI architecture with real-time streaming, document retrieval, and intelligent event recommendations.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/avdrav1/vibehuntr-agent.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/avdrav1/vibehuntr-agent/issues"
+  },
+  "homepage": "https://github.com/avdrav1/vibehuntr-agent#readme"
+}
