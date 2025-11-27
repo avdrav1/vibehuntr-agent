@@ -3,9 +3,9 @@
 from typing import List, Optional, Dict
 from dataclasses import dataclass, field
 
-from backend.app.event_planning.models.user import User
-from backend.app.event_planning.models.group import FriendGroup
-from backend.app.event_planning.models.suggestion import EventSuggestion
+from app.event_planning.models.user import User
+from app.event_planning.models.group import FriendGroup
+from app.event_planning.models.suggestion import EventSuggestion
 
 
 @dataclass

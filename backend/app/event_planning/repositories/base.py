@@ -6,13 +6,13 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Dict, Generic, List, Optional, TypeVar
 
-from backend.app.event_planning.exceptions import (
+from app.event_planning.exceptions import (
     DuplicateEntityError,
     EntityNotFoundError,
     FileStorageError,
     ValidationError,
 )
-from backend.app.event_planning.error_logging import log_storage_error, log_validation_error
+from app.event_planning.error_logging import log_storage_error, log_validation_error
 
 T = TypeVar('T')
 

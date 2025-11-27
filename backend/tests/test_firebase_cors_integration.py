@@ -7,7 +7,7 @@ Requirements: 1.3 (Firebase Hosting Migration)
 """
 
 import pytest
-from backend.app.core.config import Settings
+from app.core.config import Settings
 
 
 def test_firebase_cors_configuration_in_production():

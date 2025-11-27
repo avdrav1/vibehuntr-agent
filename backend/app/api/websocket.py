@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/planning-sessions", tags=["websocket"])
 
 # Import shared service instances
-from backend.app.services.group_coordination import (
+from app.services.group_coordination import (
     broadcast_service as _broadcast_service,
     session_service as _session_service,
     vote_manager as _vote_manager,

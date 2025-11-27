@@ -7,18 +7,18 @@ to improve future recommendations.
 from typing import List, Optional
 from datetime import datetime
 
-from backend.app.event_planning.models.feedback import EventFeedback
-from backend.app.event_planning.models.event import Event
-from backend.app.event_planning.models.user import User, PreferenceProfile
-from backend.app.event_planning.repositories.feedback_repository import FeedbackRepository
-from backend.app.event_planning.repositories.event_repository import EventRepository
-from backend.app.event_planning.repositories.user_repository import UserRepository
-from backend.app.event_planning.exceptions import (
+from app.event_planning.models.feedback import EventFeedback
+from app.event_planning.models.event import Event
+from app.event_planning.models.user import User, PreferenceProfile
+from app.event_planning.repositories.feedback_repository import FeedbackRepository
+from app.event_planning.repositories.event_repository import EventRepository
+from app.event_planning.repositories.user_repository import UserRepository
+from app.event_planning.exceptions import (
     EventNotFoundError,
     UserNotFoundError,
     NotParticipantError,
 )
-from backend.app.event_planning.error_logging import log_business_logic_error
+from app.event_planning.error_logging import log_business_logic_error
 
 
 class FeedbackProcessor:

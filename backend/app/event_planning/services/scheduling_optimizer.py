@@ -5,8 +5,8 @@ from datetime import datetime, timedelta
 from typing import List, Optional, Set, Tuple
 from zoneinfo import ZoneInfo
 
-from backend.app.event_planning.models.user import User, AvailabilityWindow
-from backend.app.event_planning.models.event import Event
+from app.event_planning.models.user import User, AvailabilityWindow
+from app.event_planning.models.event import Event
 
 
 @dataclass

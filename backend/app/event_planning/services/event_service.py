@@ -6,18 +6,18 @@ cancellation, and validation.
 
 from datetime import datetime
 from typing import List, Optional
-from backend.app.event_planning.models.event import Event, EventStatus, Location
-from backend.app.event_planning.models.suggestion import EventSuggestion
-from backend.app.event_planning.models.user import User
-from backend.app.event_planning.repositories.event_repository import EventRepository
-from backend.app.event_planning.repositories.user_repository import UserRepository
-from backend.app.event_planning.exceptions import (
+from app.event_planning.models.event import Event, EventStatus, Location
+from app.event_planning.models.suggestion import EventSuggestion
+from app.event_planning.models.user import User
+from app.event_planning.repositories.event_repository import EventRepository
+from app.event_planning.repositories.user_repository import UserRepository
+from app.event_planning.exceptions import (
     EventNotFoundError,
     InvalidEventDataError,
     InvalidEventStatusError,
     InsufficientAvailabilityError,
 )
-from backend.app.event_planning.error_logging import log_business_logic_error, log_validation_error
+from app.event_planning.error_logging import log_business_logic_error, log_validation_error
 
 
 class EventService:

@@ -10,15 +10,15 @@ import logging
 from fastapi import APIRouter, HTTPException
 from urllib.parse import urlparse
 
-from backend.app.models.link_preview import (
+from app.models.link_preview import (
     LinkPreviewRequest,
     LinkPreviewResponse,
     LinkMetadata,
 )
-from backend.app.services.metadata_fetcher import MetadataFetcher, FetchError
-from backend.app.services.html_parser import HTMLParser
-from backend.app.services.metadata_cache import MetadataCache
-from backend.app.core.config import get_settings
+from app.services.metadata_fetcher import MetadataFetcher, FetchError
+from app.services.html_parser import HTMLParser
+from app.services.metadata_cache import MetadataCache
+from app.core.config import get_settings
 
 
 # Configure logging

@@ -7,13 +7,13 @@ from datetime import datetime, timedelta
 from typing import Optional, List
 import json
 
-from backend.app.event_planning.services.event_planning_service import EventPlanningService
-from backend.app.event_planning.repositories.user_repository import UserRepository
-from backend.app.event_planning.repositories.group_repository import GroupRepository
-from backend.app.event_planning.repositories.event_repository import EventRepository
-from backend.app.event_planning.repositories.feedback_repository import FeedbackRepository
-from backend.app.event_planning.models.event import Location, EventStatus
-from backend.app.event_planning.models.suggestion import EventSuggestion
+from app.event_planning.services.event_planning_service import EventPlanningService
+from app.event_planning.repositories.user_repository import UserRepository
+from app.event_planning.repositories.group_repository import GroupRepository
+from app.event_planning.repositories.event_repository import EventRepository
+from app.event_planning.repositories.feedback_repository import FeedbackRepository
+from app.event_planning.models.event import Location, EventStatus
+from app.event_planning.models.suggestion import EventSuggestion
 import uuid
 
 

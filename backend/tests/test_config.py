@@ -8,7 +8,7 @@ import pytest
 
 def test_settings_defaults():
     """Test that settings load with default values."""
-    from backend.app.core.config import Settings
+    from app.core.config import Settings
     
     settings = Settings()
     
@@ -22,7 +22,7 @@ def test_settings_defaults():
 
 def test_get_cors_origins_development():
     """Test CORS origins in development mode."""
-    from backend.app.core.config import Settings
+    from app.core.config import Settings
     
     settings = Settings(environment="development")
     origins = settings.get_cors_origins()
@@ -35,7 +35,7 @@ def test_get_cors_origins_development():
 
 def test_get_cors_origins_production():
     """Test CORS origins in production mode."""
-    from backend.app.core.config import Settings
+    from app.core.config import Settings
     
     settings = Settings(
         environment="production",
@@ -50,7 +50,7 @@ def test_get_cors_origins_production():
 
 def test_is_production():
     """Test production environment detection."""
-    from backend.app.core.config import Settings
+    from app.core.config import Settings
     
     prod_settings = Settings(environment="production")
     dev_settings = Settings(environment="development")
@@ -61,7 +61,7 @@ def test_is_production():
 
 def test_is_development():
     """Test development environment detection."""
-    from backend.app.core.config import Settings
+    from app.core.config import Settings
     
     prod_settings = Settings(environment="production")
     dev_settings = Settings(environment="development")
@@ -72,7 +72,7 @@ def test_is_development():
 
 def test_settings_from_env():
     """Test loading settings from environment variables."""
-    from backend.app.core.config import Settings
+    from app.core.config import Settings
     
     with patch.dict(os.environ, {
         "APP_NAME": "Test API",
@@ -92,7 +92,7 @@ def test_settings_from_env():
 
 def test_get_settings_cached():
     """Test that get_settings returns cached instance."""
-    from backend.app.core.config import get_settings
+    from app.core.config import get_settings
     
     settings1 = get_settings()
     settings2 = get_settings()
@@ -107,7 +107,7 @@ def test_firebase_cors_origins_production():
     
     Requirements: 1.3 (Firebase Hosting Migration)
     """
-    from backend.app.core.config import Settings
+    from app.core.config import Settings
     
     settings = Settings(
         environment="production",
@@ -133,7 +133,7 @@ def test_firebase_cors_origins_no_project_id():
     
     Requirements: 1.3 (Firebase Hosting Migration)
     """
-    from backend.app.core.config import Settings
+    from app.core.config import Settings
     
     settings = Settings(
         environment="production",
@@ -153,7 +153,7 @@ def test_firebase_cors_origins_development():
     
     Requirements: 1.3 (Firebase Hosting Migration)
     """
-    from backend.app.core.config import Settings
+    from app.core.config import Settings
     
     settings = Settings(
         environment="development",
@@ -176,7 +176,7 @@ def test_firebase_cors_both_domains():
     
     Requirements: 1.3 (Firebase Hosting Migration)
     """
-    from backend.app.core.config import Settings
+    from app.core.config import Settings
     
     settings = Settings(
         environment="production",

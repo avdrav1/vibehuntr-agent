@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/planning-sessions", tags=["itinerary"])
 
 # Import shared service instances
-from backend.app.services.group_coordination import (
+from app.services.group_coordination import (
     itinerary_manager as _itinerary_manager,
     session_service as _session_service,
 )
